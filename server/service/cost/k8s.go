@@ -451,8 +451,8 @@ func (s *K8sCostService) RightSizeWorkload(ctx context.Context, clusterID, names
                 ClusterID:  clusterID,
                 Namespace:  namespace,
                 Workload:   workloadName,
-                Current:    ResourceSpec{CPU: 4.0, Memory: 8 * 1024 * 1024 * 1024},
-                Recommended: ResourceSpec{CPU: 2.5, Memory: 5 * 1024 * 1024 * 1024},
+                Current:    ResourceSpec{CPU: 4.0, Memory: int64(8 * 1024 * 1024 * 1024)},
+                Recommended: ResourceSpec{CPU: 2.5, Memory: int64(5 * 1024 * 1024 * 1024)},
                 MonthlySavings: 800,
                 Reason:     "基于过去30天的使用数据，当前资源配置过高",
                 Confidence: 0.85,
@@ -460,9 +460,9 @@ func (s *K8sCostService) RightSizeWorkload(ctx context.Context, clusterID, names
 
         // 历史数据
         recommendation.UsageHistory = []UsageData{
-                {Date: "2024-01-01", CPU: 2.1, Memory: 4.5 * 1024 * 1024 * 1024},
-                {Date: "2024-01-02", CPU: 2.3, Memory: 4.8 * 1024 * 1024 * 1024},
-                {Date: "2024-01-03", CPU: 2.0, Memory: 4.2 * 1024 * 1024 * 1024},
+                {Date: "2024-01-01", CPU: 2.1, Memory: int64(4.5 * 1024 * 1024 * 1024)},
+                {Date: "2024-01-02", CPU: 2.3, Memory: int64(4.8 * 1024 * 1024 * 1024)},
+                {Date: "2024-01-03", CPU: 2.0, Memory: int64(4.2 * 1024 * 1024 * 1024)},
         }
 
         return recommendation, nil
