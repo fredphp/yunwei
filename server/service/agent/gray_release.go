@@ -283,7 +283,7 @@ func (e *GrayReleaseEngine) executeWeightStrategy(ctx *GrayReleaseContext) {
                 }
 
                 // 计算下一批
-                currentPercent := strategy.WeightPercent + strategy.StepSize*(strategy.CurrentStep+1)
+                currentPercent := strategy.InitialWeight + strategy.StepSize*(strategy.CurrentStep+1)
                 if currentPercent > 100 {
                         currentPercent = 100
                 }

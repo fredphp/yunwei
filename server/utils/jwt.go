@@ -1,8 +1,6 @@
 package utils
 
 import (
-        "crypto/md5"
-        "encoding/hex"
         "errors"
         "time"
 

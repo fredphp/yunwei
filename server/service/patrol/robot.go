@@ -12,8 +12,6 @@ import (
         "yunwei/service/detector"
         "yunwei/service/notify"
         "yunwei/service/prediction"
-
-        "gorm.io/gorm"
 )
 
 // 类型别名，保持兼容性
@@ -21,6 +19,8 @@ type PatrolStatus = patrolModel.PatrolStatus
 type PatrolType = patrolModel.PatrolType
 type PatrolRecord = patrolModel.PatrolRecord
 type DailyReport = patrolModel.DailyReport
+type ServerUsage = patrolModel.ServerUsage
+type TrendAnalysis = patrolModel.TrendAnalysis
 
 // 常量别名
 const (
@@ -50,21 +50,6 @@ type CheckItem struct {
         Status   string `json:"status"` // pass, warning, fail
         Value    string `json:"value"`
         Message  string `json:"message"`
-}
-
-// ServerUsage 服务器使用率
-type ServerUsage struct {
-        ServerID   uint    `json:"serverId"`
-        ServerName string  `json:"serverName"`
-        Usage      float64 `json:"usage"`
-}
-
-// TrendAnalysis 趋势分析
-type TrendAnalysis struct {
-        CPUTrend    string `json:"cpuTrend"`    // up, down, stable
-        MemoryTrend string `json:"memoryTrend"`
-        DiskTrend   string `json:"diskTrend"`
-        AlertTrend  string `json:"alertTrend"`
 }
 
 // PatrolRobot 巡检机器人

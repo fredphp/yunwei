@@ -52,16 +52,6 @@ type Worker struct {
 	mu sync.RWMutex
 }
 
-// TaskResult 任务结果
-type TaskResult struct {
-	TaskID       uint                     `json:"taskId"`
-	Status       schedulerModel.TaskStatus `json:"status"`
-	Output       string                   `json:"output"`
-	ErrorMessage string                   `json:"errorMessage"`
-	Duration     int64                    `json:"duration"`
-	RetryCount   int                      `json:"retryCount"`
-}
-
 // NewWorker 创建 Worker
 func NewWorker(id string, maxConcurrent int) *Worker {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -145,7 +135,7 @@ func (w *Worker) processTask(task *schedulerModel.Task) {
 
 	// 更新 Worker 统计
 	atomic.AddInt64(&w.TotalTasks, 1)
-	if result.Status == schedulerModel.TaskStatusSuccess {
+	if result.Success {
 		atomic.AddInt64(&w.SuccessTasks, 1)
 	} else {
 		atomic.AddInt64(&w.FailedTasks, 1)
@@ -163,9 +153,7 @@ func (w *Worker) processTask(task *schedulerModel.Task) {
 
 // executeTask 执行任务
 func (w *Worker) executeTask(task *schedulerModel.Task) *TaskResult {
-	result := &TaskResult{
-		TaskID: task.ID,
-	}
+	result := &TaskResult{}
 
 	startTime := time.Now()
 	defer func() {
@@ -177,20 +165,18 @@ func (w *Worker) executeTask(task *schedulerModel.Task) *TaskResult {
 	case schedulerModel.TaskTypeCommand, schedulerModel.TaskTypeScript:
 		output, err := w.executeShell(task.Command)
 		if err != nil {
-			result.Status = schedulerModel.TaskStatusFailed
-			result.ErrorMessage = err.Error()
+			result.Success = false
+			result.Error = err.Error()
 		} else {
-			result.Status = schedulerModel.TaskStatusSuccess
+			result.Success = true
 			result.Output = output
 		}
 
 	default:
 		// 简化处理，其他类型都返回成功
-		result.Status = schedulerModel.TaskStatusSuccess
+		result.Success = true
 		result.Output = fmt.Sprintf("Task %s executed", task.Name)
 	}
-
-	result.RetryCount = task.RetryCount
 
 	return result
 }
