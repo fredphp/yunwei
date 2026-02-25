@@ -1,10 +1,10 @@
 package system
 
 import (
-	"gin-vue-admin/global"
-	"gin-vue-admin/model/common/response"
-	"gin-vue-admin/model/request"
-	"gin-vue-admin/model/system"
+	"yunwei/global"
+	"yunwei/model/common/response"
+	"yunwei/model/request"
+	"yunwei/model/system"
 
 	"github.com/gin-gonic/gin"
 )

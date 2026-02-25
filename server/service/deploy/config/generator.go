@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"yunwei/server/service/deploy/planner"
+	"yunwei/service/deploy/planner"
 )
 
 // ConfigGenerator 配置生成器

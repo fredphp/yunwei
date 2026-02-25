@@ -1,11 +1,11 @@
 package system
 
 import (
-	"gin-vue-admin/global"
-	"gin-vue-admin/model/common/response"
-	"gin-vue-admin/model/request"
-	"gin-vue-admin/model/system"
-	"gin-vue-admin/utils"
+	"yunwei/global"
+	"yunwei/model/common/response"
+	"yunwei/model/request"
+	"yunwei/model/system"
+	"yunwei/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
