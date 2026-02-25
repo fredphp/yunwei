@@ -6,7 +6,7 @@ import (
         "errors"
         "time"
 
-        tenantModel "github.com/fredphp/yunwei/server/model/tenant"
+        tenantModel "yunwei/model/tenant"
         "gorm.io/gorm"
 )
 

@@ -4,9 +4,9 @@ import (
         "net/http"
         "strconv"
 
-        tenantMiddleware "github.com/fredphp/yunwei/server/middleware/tenant"
-        tenantModel "github.com/fredphp/yunwei/server/model/tenant"
-        tenantService "github.com/fredphp/yunwei/server/service/tenant"
+        tenantMiddleware "yunwei/middleware/tenant"
+        tenantModel "yunwei/model/tenant"
+        tenantService "yunwei/service/tenant"
         "github.com/gin-gonic/gin"
 )
 

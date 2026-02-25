@@ -5,7 +5,7 @@ import (
         "fmt"
         "strings"
 
-        tenantModel "github.com/fredphp/yunwei/server/model/tenant"
+        tenantModel "yunwei/model/tenant"
         "github.com/gin-gonic/gin"
         "gorm.io/gorm"
 )

@@ -1,7 +1,7 @@
 package tenant
 
 import (
-        tenantModel "github.com/fredphp/yunwei/server/model/tenant"
+        tenantModel "yunwei/model/tenant"
         "github.com/gin-gonic/gin"
 )
 
