@@ -112,7 +112,7 @@ func ManualScale(c *gin.Context) {
 
 // AnalyzeScale AI 分析扩容
 func AnalyzeScale(c *gin.Context) {
-        clusterID := c.Param("clusterId")
+        clusterID := c.Param("id")
         namespace := c.Query("namespace")
         deployment := c.Query("deployment")
 
@@ -166,7 +166,7 @@ func UpdateHPAConfig(c *gin.Context) {
 
 // GetDeploymentStatus 获取 Deployment 状态
 func GetDeploymentStatus(c *gin.Context) {
-        clusterID := c.Param("clusterId")
+        clusterID := c.Param("id")
         namespace := c.Query("namespace")
         deployment := c.Query("deployment")
 

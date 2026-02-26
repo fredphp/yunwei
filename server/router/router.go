@@ -161,7 +161,7 @@ func InitRouter(r *gin.Engine) {
                                 // 集群管理 - 查看权限
                                 k8s.GET("/clusters", middleware.RequirePermission("k8s:view"), kubernetes.GetClusters)
                                 k8s.GET("/clusters/:id", middleware.RequirePermission("k8s:view"), kubernetes.GetCluster)
-                                k8s.GET("/clusters/:clusterId/deployments", middleware.RequirePermission("k8s:view"), kubernetes.GetDeploymentStatus)
+                                k8s.GET("/clusters/:id/deployments", middleware.RequirePermission("k8s:view"), kubernetes.GetDeploymentStatus)
 
                                 // 集群管理 - 添加权限 (管理员)
                                 k8s.POST("/clusters", middleware.RequirePermission("k8s:add"), kubernetes.AddCluster)
@@ -175,7 +175,7 @@ func InitRouter(r *gin.Engine) {
                                 // 扩容管理
                                 k8s.GET("/scale/history", middleware.RequirePermission("k8s:view"), kubernetes.GetScaleHistory)
                                 k8s.POST("/scale/manual", middleware.RequirePermission("k8s:scale"), kubernetes.ManualScale)
-                                k8s.POST("/clusters/:clusterId/analyze", middleware.RequirePermission("k8s:view"), kubernetes.AnalyzeScale)
+                                k8s.POST("/clusters/:id/analyze", middleware.RequirePermission("k8s:view"), kubernetes.AnalyzeScale)
 
                                 // HPA 配置
                                 k8s.GET("/hpa", middleware.RequirePermission("k8s:view"), kubernetes.GetHPAConfigs)
