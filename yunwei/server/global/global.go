@@ -2,11 +2,12 @@ package global
 
 import (
 	"fmt"
-	"yunwei/config"
 
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+
+	"yunwei/config"
 )
 
 var (
