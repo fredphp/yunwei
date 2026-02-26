@@ -1,101 +1,50 @@
-# AI 自动化运维管理系统配置
-
 # 系统配置
 system:
-  port: "8080"
-  grpc-port: "50051"
-  env: "develop"
-  name: "yunwei"
+  port: 8080                    # 服务端口
+  env: develop                  # 环境: develop, test, production
+  db-type: mysql                # 数据库类型
 
-# 数据库配置
+# MySQL 数据库配置
 mysql:
-  host: "127.0.0.1"
-  port: 3306
-  username: "root"
-  password: "123456"
-  database: "yunwei"
-  max-idle-conns: 10
-  max-open-conns: 100
+  host: 127.0.0.1               # 数据库地址
+  port: 3306                    # 端口
+  username: root                # 用户名
+  password: 123456              # 密码
+  database: gin_vue_admin       # 数据库名
+  max-idle-conns: 10            # 最大空闲连接数
+  max-open-conns: 100           # 最大打开连接数
+  log-mode: true                # 是否开启日志
 
-# Redis配置
+# Redis 配置
 redis:
-  host: "127.0.0.1"
+  host: 127.0.0.1
   port: 6379
   password: ""
   db: 0
 
-# JWT配置
+# JWT 配置
 jwt:
-  signing-key: "yunwei-secret-key-2024"
-  expires-time: "24h"
-  issuer: "yunwei"
+  signing-key: gin-vue-admin-secret-key
+  expires-time: 7d              # token 过期时间
+  issuer: gin-vue-admin         # 签发者
 
-# AI 配置
-ai:
-  enabled: true
-  api-key: "your-glm5-api-key"
-  base-url: "https://open.bigmodel.cn/api/paas/v4"
-  model: "glm-4"
-  max-tokens: 4096
-  temperature: 0.7
-  auto-execute: false
+# 日志配置
+zap:
+  level: info
+  format: console
+  prefix: "[GIN-VUE-ADMIN]"
+  director: log
+  show-line: true
+  encode-level: LowercaseColorLevelEncoder
 
-# 安全配置
-security:
-  enable-whitelist: true
-  enable-blacklist: true
-  require-approval: true
-  audit-enabled: true
-  audit-retention-days: 90
+# 文件上传配置
+upload:
+  save-path: uploads/           # 保存路径
+  max-size: 10                  # 最大文件大小 MB
+  allow-ext: .jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx
 
-# 监控配置
-monitor:
-  prometheus:
-    enabled: true
-    url: "http://127.0.0.1:9090"
-  grafana:
-    enabled: true
-    url: "http://127.0.0.1:3000"
-
-# 通知配置
-notify:
-  telegram:
-    enabled: false
-    token: ""
-    chat-id: ""
-  wechat:
-    enabled: false
-    webhook: ""
-  dingtalk:
-    enabled: false
-    webhook: ""
-
-# 巡检配置
-patrol:
-  daily-cron: "0 0 8 * * *"
-  hourly-cron: "0 0 * * * *"
-  auto-report: true
-
-# 自愈配置
-self-heal:
-  enabled: true
-  check-interval: 30
-  max-retry: 3
-  cooldown: 60
-
-# 预测配置
-prediction:
-  enabled: true
-  interval: 6
-  history-days: 30
-
-# 调度器配置
-scheduler:
-  enabled: true
-  max-concurrent: 10
-
-# Agent配置
-agent:
-  heartbeat-timeout: 60
-  metrics-interval: 15
-  auto-register: true
+# 验证码配置
+captcha:
+  key-long: 6                   # 验证码长度
+  img-width: 240                # 图片宽度
+  img-height: 80                # 图片高度
