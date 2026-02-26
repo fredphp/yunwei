@@ -58,7 +58,7 @@ func Login(c *gin.Context) {
 	}
 
 	// 生成 Token
-	token, err := utils.GenerateToken(user.ID, user.Username, user.Role)
+	token, err := utils.GenerateToken(user.ID, user.Username, user.Role, 0)
 	if err != nil {
 		response.FailWithMessage("生成Token失败", c)
 		return
@@ -97,11 +97,11 @@ func Register(c *gin.Context) {
 
 	// 创建用户
 	user := map[string]interface{}{
-		"username":  req.Username,
-		"password":  utils.MD5(req.Password),
-		"nick_name": req.NickName,
-		"role":      "user",
-		"status":    1,
+		"username":   req.Username,
+		"password":   utils.MD5(req.Password),
+		"nick_name":  req.NickName,
+		"role":       "user",
+		"status":     1,
 		"created_at": time.Now(),
 		"updated_at": time.Now(),
 	}
