@@ -47,7 +47,7 @@ func (u *UserApi) Login(c *gin.Context) {
         }
 
         // 生成 Token
-        token, err := utils.GenerateToken(user.ID, user.Username, user.Role.Name)
+        token, err := utils.GenerateToken(user.ID, user.Username, user.NickName, user.RoleID)
         if err != nil {
                 response.FailWithMessage("生成Token失败", c)
                 return
