@@ -75,14 +75,14 @@ func (h *Handler) UpdatePolicy(c *gin.Context) {
         }
         policy.ID = uint(id)
 
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // DeletePolicy 删除备份策略
 func (h *Handler) DeletePolicy(c *gin.Context) {
         id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
         _ = id
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // TriggerBackup 手动触发备份
@@ -231,7 +231,7 @@ func (h *Handler) CreateSnapshot(c *gin.Context) {
 func (h *Handler) DeleteSnapshot(c *gin.Context) {
         id := c.Param("id")
         _ = id
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // ==================== 恢复管理 ====================
@@ -460,19 +460,20 @@ func (h *Handler) UpdateScript(c *gin.Context) {
         }
         script.ID = uint(id)
 
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // DeleteScript 删除恢复脚本
 func (h *Handler) DeleteScript(c *gin.Context) {
         id := c.Param("id")
         _ = id
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // ExecuteScript 执行脚本
 func (h *Handler) ExecuteScript(c *gin.Context) {
         id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+        _ = id
         var req struct {
                 Params map[string]interface{} `json:"params"`
         }
@@ -531,14 +532,14 @@ func (h *Handler) UpdateTarget(c *gin.Context) {
         }
         target.ID = uint(id)
 
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // DeleteTarget 删除备份目标
 func (h *Handler) DeleteTarget(c *gin.Context) {
         id := c.Param("id")
         _ = id
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // TestTarget 测试备份目标连接
@@ -581,14 +582,14 @@ func (h *Handler) UpdateStorage(c *gin.Context) {
         }
         storage.ID = uint(id)
 
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // DeleteStorage 删除存储配置
 func (h *Handler) DeleteStorage(c *gin.Context) {
         id := c.Param("id")
         _ = id
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // TestStorage 测试存储连接

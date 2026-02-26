@@ -69,7 +69,7 @@ func DeleteCertificate(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // RenewCertificate 续期证书
@@ -107,7 +107,7 @@ func CheckAllCertificates(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // GetRenewalHistory 获取续期历史

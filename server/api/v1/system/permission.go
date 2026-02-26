@@ -209,7 +209,7 @@ func DeleteRole(c *gin.Context) {
                 return
         }
 
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // ==================== 用户权限管理 ====================

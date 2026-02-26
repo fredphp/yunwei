@@ -4,6 +4,7 @@ import (
         "strconv"
         "time"
 
+        "yunwei/config"
         "yunwei/global"
         "yunwei/model/common/response"
         "yunwei/model/server"
@@ -150,7 +151,7 @@ func DeleteServer(c *gin.Context) {
                 return
         }
 
-        response.OkWithData(nil, c)
+        response.Ok(nil, c)
 }
 
 // GetServerMetrics 获取服务器指标
@@ -332,7 +333,7 @@ func DeleteGroup(c *gin.Context) {
                 return
         }
 
-        response.Ok(c)
+        response.Ok(nil, c)
 }
 
 // GetDockerContainers 获取Docker容器
@@ -385,9 +386,9 @@ func AIAnalyze(c *gin.Context) {
 
         // 创建决策引擎
         llmClient := llm.NewGLM5Client(llm.GLM5Config{
-                APIKey: global.CONFIG.AI.APIKey,
-                BaseURL: global.CONFIG.AI.BaseURL,
-                Model:   global.CONFIG.AI.Model,
+                APIKey: config.CONFIG.AI.APIKey,
+                BaseURL: config.CONFIG.AI.BaseURL,
+                Model:   config.CONFIG.AI.Model,
         })
         engine := decision.NewEngine(llmClient)
 

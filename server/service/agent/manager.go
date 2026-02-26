@@ -455,7 +455,7 @@ func (m *AgentManager) BatchOperation(req *BatchOperationRequest) (*BatchOperati
                 }
         }
 
-        result.Total = len(agents)
+        result.Total = int64(len(agents))
         result.SuccessCount = len(result.SuccessAgents)
         result.FailedCount = len(result.FailedAgents)
 
