@@ -61,6 +61,7 @@ func (s *IsolationService) TenantMiddleware() gin.HandlerFunc {
                 tenantID := c.GetHeader("X-Tenant-ID")
                 if tenantID != "" {
                         tenant, _ = s.getTenantByID(tenantID)
+                        _ = err // 忽略错误
                 }
 
                 // 2. 从子域名获取租户

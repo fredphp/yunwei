@@ -14,9 +14,11 @@ import (
         haApi "yunwei/api/v1/ha"
         backupApi "yunwei/api/v1/backup"
         costApi "yunwei/api/v1/cost"
-        tenantApi "yunwei/api/v1/tenant"
         "yunwei/api/v1/system"
         "yunwei/middleware"
+        "yunwei/global"
+        tenantApi "yunwei/api/v1/tenant"
+        tenantService "yunwei/service/tenant"
         "yunwei/websocket"
 
         "github.com/gin-gonic/gin"
@@ -467,7 +469,11 @@ func InitRouter(r *gin.Engine) {
                         // ==================== 多租户系统 ====================
                         tenantGroup := authGroup.Group("")
                         {
-                                tenantApi.RegisterRoutes(tenantGroup, tenantApi.NewHandler())
+                                tenantSvc := tenantService.NewTenantService(global.DB)
+                                isolationSvc := tenantService.NewIsolationService(global.DB)
+                                rbacSvc := tenantService.NewRBACService(global.DB)
+                                tenantHandler := tenantApi.NewHandler(tenantSvc, isolationSvc, rbacSvc)
+                                tenantHandler.RegisterRoutes(tenantGroup)
                         }
                 }
         }

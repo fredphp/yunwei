@@ -510,7 +510,6 @@ func (e *GrayReleaseEngine) GetStrategyProgress(id uint) (*StrategyProgress, err
 
         // 预估剩余时间
         if strategy.StrategyType == "weight" && strategy.Status == "running" {
-                remainingAgents := strategy.TotalAgents - strategy.UpgradedAgents
                 remainingSteps := (100 - int(progress.CurrentPercent)) / strategy.StepSize
                 progress.EstimatedTime = remainingSteps * strategy.StepInterval
         }

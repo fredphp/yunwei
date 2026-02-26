@@ -2,8 +2,6 @@ package cost
 
 import (
         "context"
-        "encoding/json"
-        "fmt"
         "sync"
         "time"
 
@@ -461,8 +459,8 @@ func (s *K8sCostService) RightSizeWorkload(ctx context.Context, clusterID, names
         // 历史数据
         recommendation.UsageHistory = []UsageData{
                 {Date: "2024-01-01", CPU: 2.1, Memory: int64(4.5 * 1024 * 1024 * 1024)},
-                {Date: "2024-01-02", CPU: 2.3, Memory: int64(4.8 * 1024 * 1024 * 1024)},
-                {Date: "2024-01-03", CPU: 2.0, Memory: int64(4.2 * 1024 * 1024 * 1024)},
+                {Date: "2024-01-02", CPU: 2.3, Memory: int64(5 * 1024 * 1024 * 1024)},
+                {Date: "2024-01-03", CPU: 2.0, Memory: int64(4 * 1024 * 1024 * 1024)},
         }
 
         return recommendation, nil
