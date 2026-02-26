@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: gin-vue-admin-server
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USERNAME=root
+      - MYSQL_PASSWORD=123456
+      - MYSQL_DATABASE=gin_vue_admin
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - gin-vue-admin-network
+    restart: unless-stopped
+
+  # 前端服务
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: gin-vue-admin-web
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - gin-vue-admin-network
+    restart: unless-stopped
+
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: gin-vue-admin-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=gin_vue_admin
+      - TZ=Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - gin-vue-admin-network
+    restart: unless-stopped
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: gin-vue-admin-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - gin-vue-admin-network
+    restart: unless-stopped
+
+networks:
+  gin-vue-admin-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:

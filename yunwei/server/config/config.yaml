@@ -1,0 +1,50 @@
+# 系统配置
+system:
+  port: 8080                    # 服务端口
+  env: develop                  # 环境: develop, test, production
+  db-type: mysql                # 数据库类型
+
+# MySQL 数据库配置
+mysql:
+  host: 127.0.0.1               # 数据库地址
+  port: 3306                    # 端口
+  username: root                # 用户名
+  password: 123456              # 密码
+  database: gin_vue_admin       # 数据库名
+  max-idle-conns: 10            # 最大空闲连接数
+  max-open-conns: 100           # 最大打开连接数
+  log-mode: true                # 是否开启日志
+
+# Redis 配置
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ""
+  db: 0
+
+# JWT 配置
+jwt:
+  signing-key: gin-vue-admin-secret-key
+  expires-time: 7d              # token 过期时间
+  issuer: gin-vue-admin         # 签发者
+
+# 日志配置
+zap:
+  level: info
+  format: console
+  prefix: "[GIN-VUE-ADMIN]"
+  director: log
+  show-line: true
+  encode-level: LowercaseColorLevelEncoder
+
+# 文件上传配置
+upload:
+  save-path: uploads/           # 保存路径
+  max-size: 10                  # 最大文件大小 MB
+  allow-ext: .jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx
+
+# 验证码配置
+captcha:
+  key-long: 6                   # 验证码长度
+  img-width: 240                # 图片宽度
+  img-height: 80                # 图片高度
