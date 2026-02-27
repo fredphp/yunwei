@@ -2,6 +2,7 @@ package global
 
 import (
         "fmt"
+        "time"
         "yunwei/config"
         "yunwei/model/agent"
         "yunwei/model/ha"
@@ -151,6 +152,169 @@ func initData() {
 
         // 初始化超级管理员
         initAdminUser()
+
+        // 初始化租户测试数据
+        initTenants()
+}
+
+// initTenants 初始化租户测试数据
+func initTenants() {
+        var count int64
+        DB.Model(&tenant.Tenant{}).Count(&count)
+        if count > 0 {
+                return
+        }
+
+        // 创建测试租户
+        testTenants := []struct {
+                Name    string
+                Slug    string
+                Plan    string
+                Email   string
+                Owner   string
+                Domain  string
+        }{
+                {"Acme Corporation", "acme", "pro", "admin@acme.com", "John Smith", "acme.example.com"},
+                {"TechStart Inc", "techstart", "starter", "admin@techstart.io", "Jane Doe", ""},
+                {"Global Solutions", "global", "enterprise", "admin@global.com", "Mike Johnson", "global.example.com"},
+                {"Demo Company", "demo", "free", "demo@example.com", "Demo User", ""},
+                {"StartupXYZ", "startup", "starter", "admin@startupxyz.com", "Alice Wang", ""},
+        }
+
+        for _, t := range testTenants {
+                createTestTenant(t.Name, t.Slug, t.Plan, t.Email, t.Owner, t.Domain)
+        }
+
+        fmt.Println("租户测试数据初始化完成")
+}
+
+// createTestTenant 创建测试租户
+func createTestTenant(name, slug, plan, email, ownerName, domain string) {
+        // 检查 slug 是否已存在
+        var count int64
+        DB.Model(&tenant.Tenant{}).Where("slug = ?", slug).Count(&count)
+        if count > 0 {
+                return
+        }
+
+        // 生成 ID
+        tenantID := generateUUID()
+
+        // 创建租户
+        t := tenant.Tenant{
+                ID:          tenantID,
+                Name:        name,
+                Slug:        slug,
+                Status:      "active",
+                Plan:        plan,
+                Domain:      domain,
+                ContactEmail: email,
+                ContactName: ownerName,
+                BillingCycle: "monthly",
+                Settings:    tenant.JSON{},
+                Features:    tenant.JSON{},
+        }
+
+        if err := DB.Create(&t).Error; err != nil {
+                fmt.Printf("创建租户 %s 失败: %v\n", name, err)
+                return
+        }
+
+        // 创建配额
+        quotaPreset, ok := tenant.PlanQuotas[plan]
+        if !ok {
+                quotaPreset = tenant.PlanQuotas["free"]
+        }
+
+        // 设置一些随机的当前使用量
+        currentUsers := 0
+        currentResources := 0
+        if plan == "pro" {
+                currentUsers = 35
+                currentResources = 280
+        } else if plan == "starter" {
+                currentUsers = 6
+                currentResources = 45
+        } else if plan == "enterprise" {
+                currentUsers = 150
+                currentResources = 1200
+        } else if plan == "free" {
+                currentUsers = 2
+                currentResources = 15
+        }
+
+        quota := tenant.TenantQuota{
+                ID:               generateUUID(),
+                TenantID:         tenantID,
+                MaxUsers:         quotaPreset.MaxUsers,
+                MaxAdmins:        quotaPreset.MaxAdmins,
+                MaxResources:     quotaPreset.MaxResources,
+                MaxServers:       quotaPreset.MaxServers,
+                MaxDatabases:     quotaPreset.MaxDatabases,
+                MaxMonitors:      quotaPreset.MaxMonitors,
+                MaxAlertRules:    quotaPreset.MaxAlertRules,
+                MetricsRetention: quotaPreset.MetricsRetention,
+                MaxCloudAccounts: quotaPreset.MaxCloudAccounts,
+                BudgetLimit:      quotaPreset.BudgetLimit,
+                MaxStorageGB:     quotaPreset.MaxStorageGB,
+                MaxBackupGB:      quotaPreset.MaxBackupGB,
+                MaxAPICalls:      quotaPreset.MaxAPICalls,
+                MaxWebhooks:      quotaPreset.MaxWebhooks,
+                CurrentUsers:     currentUsers,
+                CurrentResources: currentResources,
+                CurrentStorage:   currentResources * 2,
+                CurrentAPICalls:  currentUsers * 100,
+        }
+
+        if err := DB.Create(&quota).Error; err != nil {
+                fmt.Printf("创建租户配额 %s 失败: %v\n", name, err)
+                return
+        }
+
+        // 创建默认角色
+        createTenantRoles(tenantID)
+
+        // 获取 owner 角色
+        var ownerRole tenant.TenantRole
+        DB.Where("tenant_id = ? AND slug = ?", tenantID, "owner").First(&ownerRole)
+
+        // 创建租户所有者
+        tenantUser := tenant.TenantUser{
+                ID:       generateUUID(),
+                TenantID: tenantID,
+                UserID:   generateUUID(),
+                Email:    email,
+                Name:     ownerName,
+                RoleID:   ownerRole.ID,
+                RoleName: "owner",
+                IsOwner:  true,
+                IsAdmin:  true,
+                Status:   "active",
+        }
+
+        DB.Create(&tenantUser)
+}
+
+// createTenantRoles 创建租户角色
+func createTenantRoles(tenantID string) {
+        for slug, roleData := range tenant.DefaultRoles {
+                role := tenant.TenantRole{
+                        ID:          generateUUID(),
+                        TenantID:    tenantID,
+                        Name:        slug,
+                        Slug:        slug,
+                        Description: roleData["description"].(string),
+                        IsSystem:    true,
+                        Permissions: tenant.JSON{"permissions": roleData["permissions"]},
+                        Scope:       "tenant",
+                }
+                DB.Create(&role)
+        }
+}
+
+// generateUUID 生成 UUID
+func generateUUID() string {
+        return fmt.Sprintf("%016x%016x", time.Now().UnixNano(), time.Now().UnixMicro())
 }
 
 func initRoles() {
