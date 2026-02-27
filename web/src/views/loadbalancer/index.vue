@@ -209,7 +209,7 @@ const backendForm = ref({
 const fetchLoadBalancers = async () => {
   loading.value = true
   try {
-    const res = await request.get('/api/v1/loadbalancer')
+    const res = await request.get('/loadbalancer')
     loadBalancers.value = res.data || []
     if (loadBalancers.value.length > 0) {
       selectLB(loadBalancers.value[0])
@@ -231,7 +231,7 @@ const selectLB = async (lb: any) => {
 const fetchBackends = async (lbId: number) => {
   backendLoading.value = true
   try {
-    const res = await request.get(`/api/v1/loadbalancer/${lbId}/backends`)
+    const res = await request.get(`/loadbalancer/${lbId}/backends`)
     backends.value = res.data || []
   } catch (error) {
     console.error('获取后端服务器失败', error)
@@ -243,7 +243,7 @@ const fetchBackends = async (lbId: number) => {
 const fetchOptimizationHistory = async (lbId: number) => {
   historyLoading.value = true
   try {
-    const res = await request.get('/api/v1/loadbalancer/history', { params: { lbId } })
+    const res = await request.get('/loadbalancer/history', { params: { lbId } })
     optimizationHistory.value = res.data || []
   } catch (error) {
     console.error('获取优化历史失败', error)
@@ -254,7 +254,7 @@ const fetchOptimizationHistory = async (lbId: number) => {
 
 const addLB = async () => {
   try {
-    await request.post('/api/v1/loadbalancer', lbForm.value)
+    await request.post('/loadbalancer', lbForm.value)
     ElMessage.success('添加成功')
     showAddDialog.value = false
     fetchLoadBalancers()
@@ -265,7 +265,7 @@ const addLB = async () => {
 
 const addBackend = async () => {
   try {
-    await request.post(`/api/v1/loadbalancer/${currentLB.value.id}/backends`, backendForm.value)
+    await request.post(`/loadbalancer/${currentLB.value.id}/backends`, backendForm.value)
     ElMessage.success('添加成功')
     showAddBackendDialog.value = false
     fetchBackends(currentLB.value.id)
@@ -281,7 +281,7 @@ const editBackend = (backend: any) => {
 
 const removeBackend = async (backend: any) => {
   try {
-    await request.delete(`/api/v1/loadbalancer/backends/${backend.id}`)
+    await request.delete(`/loadbalancer/backends/${backend.id}`)
     ElMessage.success('移除成功')
     fetchBackends(currentLB.value.id)
   } catch (error) {
@@ -291,7 +291,7 @@ const removeBackend = async (backend: any) => {
 
 const optimizeLB = async (lb: any) => {
   try {
-    const res = await request.post(`/api/v1/loadbalancer/${lb.id}/optimize`)
+    const res = await request.post(`/loadbalancer/${lb.id}/optimize`)
     ElMessage.success('AI 优化已执行')
     fetchOptimizationHistory(lb.id)
     if (res.data) {

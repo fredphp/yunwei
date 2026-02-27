@@ -29,7 +29,7 @@
             <el-tab-pane label="上传文件" name="file">
               <el-upload
                 drag
-                action="/api/v1/deploy/upload"
+                action="/deploy/upload"
                 :headers="uploadHeaders"
                 :on-success="handleUploadSuccess"
                 :on-error="handleUploadError"
@@ -373,7 +373,7 @@ const analyzeByPath = async () => {
   
   analyzing.value = true
   try {
-    const res = await request.post('/api/v1/deploy/analyze', { path: pathForm.value.path })
+    const res = await request.post('/deploy/analyze', { path: pathForm.value.path })
     projectAnalysis.value = res.data
     ElMessage.success('项目分析成功')
     currentStep.value = 1
@@ -388,7 +388,7 @@ const analyzeByPath = async () => {
 const analyzeServers = async () => {
   analyzing.value = true
   try {
-    const res = await request.get('/api/v1/deploy/servers/analyze')
+    const res = await request.get('/deploy/servers/analyze')
     // 更新服务器能力
   } catch (error) {
     console.error('分析服务器失败', error)
@@ -403,7 +403,7 @@ const findBestServers = async () => {
   
   findingServers.value = true
   try {
-    const res = await request.post('/api/v1/deploy/servers/find-best', {
+    const res = await request.post('/deploy/servers/find-best', {
       minCpu: projectAnalysis.value.minCpu,
       minMemory: projectAnalysis.value.minMemory,
       minDisk: projectAnalysis.value.minDisk,
@@ -420,7 +420,7 @@ const findBestServers = async () => {
 // 获取服务器能力
 const fetchServerCapabilities = async () => {
   try {
-    const res = await request.get('/api/v1/deploy/servers/capabilities')
+    const res = await request.get('/deploy/servers/capabilities')
     serverCapabilities.value = res.data || []
   } catch (error) {
     console.error('获取服务器能力失败', error)
@@ -438,7 +438,7 @@ const generatePlan = async () => {
   
   generating.value = true
   try {
-    const res = await request.post('/api/v1/deploy/plans', {
+    const res = await request.post('/deploy/plans', {
       projectAnalysisId: projectAnalysis.value.id
     })
     deployPlan.value = res.data
@@ -456,7 +456,7 @@ const previewConfigs = async () => {
   
   previewing.value = true
   try {
-    const res = await request.get(`/api/v1/deploy/plans/${deployPlan.value.id}/preview`)
+    const res = await request.get(`/deploy/plans/${deployPlan.value.id}/preview`)
     configPreviews.value = res.data || []
     showConfigPreview.value = true
   } catch (error) {
@@ -472,7 +472,7 @@ const executeDeploy = async () => {
   
   executing.value = true
   try {
-    const res = await request.post(`/api/v1/deploy/plans/${deployPlan.value.id}/execute`)
+    const res = await request.post(`/deploy/plans/${deployPlan.value.id}/execute`)
     deployTask.value = res.data
     ElMessage.success('部署任务已启动')
     
@@ -491,11 +491,11 @@ const pollTaskStatus = async () => {
   
   const poll = async () => {
     try {
-      const res = await request.get(`/api/v1/deploy/tasks/${deployTask.value.id}`)
+      const res = await request.get(`/deploy/tasks/${deployTask.value.id}`)
       deployTask.value = res.data
       
       // 获取步骤
-      const stepsRes = await request.get(`/api/v1/deploy/tasks/${deployTask.value.id}/steps`)
+      const stepsRes = await request.get(`/deploy/tasks/${deployTask.value.id}/steps`)
       taskSteps.value = stepsRes.data || []
       
       // 如果任务还在运行，继续轮询
@@ -513,7 +513,7 @@ const pollTaskStatus = async () => {
 // 暂停部署
 const pauseDeploy = async () => {
   try {
-    await request.post(`/api/v1/deploy/tasks/${deployTask.value.id}/pause`)
+    await request.post(`/deploy/tasks/${deployTask.value.id}/pause`)
     ElMessage.success('已暂停')
     deployTask.value.status = 'paused'
   } catch (error) {
@@ -524,7 +524,7 @@ const pauseDeploy = async () => {
 // 恢复部署
 const resumeDeploy = async () => {
   try {
-    await request.post(`/api/v1/deploy/tasks/${deployTask.value.id}/resume`)
+    await request.post(`/deploy/tasks/${deployTask.value.id}/resume`)
     ElMessage.success('已恢复')
     deployTask.value.status = 'running'
     pollTaskStatus()
@@ -536,7 +536,7 @@ const resumeDeploy = async () => {
 // 回滚部署
 const rollbackDeploy = async () => {
   try {
-    await request.post(`/api/v1/deploy/tasks/${deployTask.value.id}/rollback`)
+    await request.post(`/deploy/tasks/${deployTask.value.id}/rollback`)
     ElMessage.warning('已回滚')
   } catch (error) {
     ElMessage.error('回滚失败')

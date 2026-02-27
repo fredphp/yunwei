@@ -317,7 +317,7 @@ const filteredTenants = computed(() => {
 const fetchTenants = async () => {
   loading.value = true
   try {
-    const res = await request.get('/api/v1/admin/tenants')
+    const res = await request.get('/admin/tenants')
     // tenants.value = res.data || []
   } catch (error) {
     console.error('获取租户列表失败', error)
@@ -340,10 +340,10 @@ const editTenant = (tenant: any) => {
 const saveTenant = async () => {
   try {
     if (editingTenant.value) {
-      await request.put(`/api/v1/admin/tenants/${editingTenant.value.id}`, tenantForm.value)
+      await request.put(`/admin/tenants/${editingTenant.value.id}`, tenantForm.value)
       ElMessage.success('更新成功')
     } else {
-      await request.post('/api/v1/admin/tenants', tenantForm.value)
+      await request.post('/admin/tenants', tenantForm.value)
       ElMessage.success('创建成功')
     }
     showCreateDialog.value = false
@@ -386,7 +386,7 @@ const viewAuditLogs = (tenant: any) => {
 const suspendTenant = async (tenant: any) => {
   try {
     await ElMessageBox.confirm('确定暂停该租户？暂停后用户将无法登录', '提示', { type: 'warning' })
-    await request.post(`/api/v1/admin/tenants/${tenant.id}/suspend`)
+    await request.post(`/admin/tenants/${tenant.id}/suspend`)
     ElMessage.success('租户已暂停')
     fetchTenants()
   } catch {}
@@ -394,7 +394,7 @@ const suspendTenant = async (tenant: any) => {
 
 const activateTenant = async (tenant: any) => {
   try {
-    await request.post(`/api/v1/admin/tenants/${tenant.id}/activate`)
+    await request.post(`/admin/tenants/${tenant.id}/activate`)
     ElMessage.success('租户已激活')
     fetchTenants()
   } catch {}
@@ -403,7 +403,7 @@ const activateTenant = async (tenant: any) => {
 const deleteTenant = async (tenant: any) => {
   try {
     await ElMessageBox.confirm('确定删除该租户？此操作不可恢复', '警告', { type: 'warning' })
-    await request.delete(`/api/v1/admin/tenants/${tenant.id}`)
+    await request.delete(`/admin/tenants/${tenant.id}`)
     ElMessage.success('删除成功')
     fetchTenants()
   } catch {}
