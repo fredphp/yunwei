@@ -6,6 +6,7 @@ import (
         "time"
 
         "yunwei/global"
+        "yunwei/service/scheduler/cron"
 )
 
 // TaskStatus 任务状态
@@ -501,4 +502,14 @@ func RecordTaskEvent(taskID uint, eventType string, eventData interface{}, opera
                 Remark:    remark,
         }
         return global.DB.Create(event).Error
+}
+
+// GetCronJobs 获取所有定时任务
+func GetCronJobs() ([]CronJob, error) {
+        return cron.GetCronJobs()
+}
+
+// GetCronExecutions 获取定时任务执行历史
+func GetCronExecutions(cronJobID uint, limit int) ([]CronExecution, error) {
+        return cron.GetCronExecutions(cronJobID, limit)
 }
