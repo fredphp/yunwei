@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+        "time"
         "yunwei/global"
         "yunwei/model/common/response"
         "yunwei/service/scheduler"
@@ -446,7 +447,7 @@ func GetDashboard(c *gin.Context) {
         global.DB.Model(&scheduler.Task{}).Where("status = ?", scheduler.TaskStatusFailed).Count(&failed)
         
         // 今日统计
-        today := "2006-01-02"
+        today := time.Now().Format("2006-01-02")
         var todayTasks, todaySuccess, todayFailed int64
         global.DB.Model(&scheduler.Task{}).Where("DATE(created_at) = ?", today).Count(&todayTasks)
         global.DB.Model(&scheduler.Task{}).Where("status = ? AND DATE(created_at) = ?", scheduler.TaskStatusSuccess, today).Count(&todaySuccess)
