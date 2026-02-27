@@ -9,7 +9,6 @@ import (
         "github.com/gin-gonic/gin"
 )
 
-type MenuApi struct{}
 
 // GetMenuList 获取菜单列表
 // @Summary 获取菜单列表
@@ -18,7 +17,7 @@ type MenuApi struct{}
 // @Produce json
 // @Success 200 {object} response.Response
 // @Router /api/v1/menus [get]
-func (m *MenuApi) GetMenuList(c *gin.Context) {
+func GetMenuList(c *gin.Context) {
         var menus []system.SysMenu
         global.DB.Where("status = ?", 1).Order("sort").Find(&menus)
 
@@ -47,7 +46,7 @@ func buildMenuTree(menus []system.SysMenu, parentId uint) []system.SysMenu {
 // @Param id path int true "菜单ID"
 // @Success 200 {object} response.Response
 // @Router /api/v1/menus/{id} [get]
-func (m *MenuApi) GetMenu(c *gin.Context) {
+func GetMenu(c *gin.Context) {
         var req struct {
                 ID uint `uri:"id" binding:"required"`
         }
@@ -73,7 +72,7 @@ func (m *MenuApi) GetMenu(c *gin.Context) {
 // @Param data body request.MenuCreate true "菜单信息"
 // @Success 200 {object} response.Response
 // @Router /api/v1/menus [post]
-func (m *MenuApi) CreateMenu(c *gin.Context) {
+func CreateMenu(c *gin.Context) {
         var req request.MenuCreate
         if err := c.ShouldBindJSON(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -108,7 +107,7 @@ func (m *MenuApi) CreateMenu(c *gin.Context) {
 // @Param data body request.MenuUpdate true "菜单信息"
 // @Success 200 {object} response.Response
 // @Router /api/v1/menus/{id} [put]
-func (m *MenuApi) UpdateMenu(c *gin.Context) {
+func UpdateMenu(c *gin.Context) {
         var req request.MenuUpdate
         if err := c.ShouldBindJSON(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -145,7 +144,7 @@ func (m *MenuApi) UpdateMenu(c *gin.Context) {
 // @Param id path int true "菜单ID"
 // @Success 200 {object} response.Response
 // @Router /api/v1/menus/{id} [delete]
-func (m *MenuApi) DeleteMenu(c *gin.Context) {
+func DeleteMenu(c *gin.Context) {
         var req struct {
                 ID uint `uri:"id" binding:"required"`
         }

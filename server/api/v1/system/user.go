@@ -10,7 +10,6 @@ import (
         "github.com/gin-gonic/gin"
 )
 
-type UserApi struct{}
 
 // Login 用户登录
 // @Summary 用户登录
@@ -20,7 +19,7 @@ type UserApi struct{}
 // @Param data body request.Login true "登录信息"
 // @Success 200 {object} response.Response
 // @Router /api/v1/login [post]
-func (u *UserApi) Login(c *gin.Context) {
+func Login(c *gin.Context) {
         var req request.Login
         if err := c.ShouldBindJSON(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -73,7 +72,7 @@ func (u *UserApi) Login(c *gin.Context) {
 // @Param data body request.Register true "注册信息"
 // @Success 200 {object} response.Response
 // @Router /api/v1/register [post]
-func (u *UserApi) Register(c *gin.Context) {
+func Register(c *gin.Context) {
         var req request.Register
         if err := c.ShouldBindJSON(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -114,7 +113,7 @@ func (u *UserApi) Register(c *gin.Context) {
 // @Param username query string false "用户名"
 // @Success 200 {object} response.Response
 // @Router /api/v1/users [get]
-func (u *UserApi) GetUserList(c *gin.Context) {
+func GetUserList(c *gin.Context) {
         var req request.UserList
         if err := c.ShouldBindQuery(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -147,7 +146,7 @@ func (u *UserApi) GetUserList(c *gin.Context) {
 // @Param id path int true "用户ID"
 // @Success 200 {object} response.Response
 // @Router /api/v1/users/{id} [get]
-func (u *UserApi) GetUser(c *gin.Context) {
+func GetUser(c *gin.Context) {
         var req request.UserInfo
         if err := c.ShouldBindUri(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -171,7 +170,7 @@ func (u *UserApi) GetUser(c *gin.Context) {
 // @Param data body request.UserCreate true "用户信息"
 // @Success 200 {object} response.Response
 // @Router /api/v1/users [post]
-func (u *UserApi) CreateUser(c *gin.Context) {
+func CreateUser(c *gin.Context) {
         var req request.UserCreate
         if err := c.ShouldBindJSON(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -212,7 +211,7 @@ func (u *UserApi) CreateUser(c *gin.Context) {
 // @Param data body request.UserUpdate true "用户信息"
 // @Success 200 {object} response.Response
 // @Router /api/v1/users/{id} [put]
-func (u *UserApi) UpdateUser(c *gin.Context) {
+func UpdateUser(c *gin.Context) {
         var req request.UserUpdate
         if err := c.ShouldBindJSON(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -245,7 +244,7 @@ func (u *UserApi) UpdateUser(c *gin.Context) {
 // @Param id path int true "用户ID"
 // @Success 200 {object} response.Response
 // @Router /api/v1/users/{id} [delete]
-func (u *UserApi) DeleteUser(c *gin.Context) {
+func DeleteUser(c *gin.Context) {
         var req request.UserInfo
         if err := c.ShouldBindUri(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)
@@ -267,7 +266,7 @@ func (u *UserApi) DeleteUser(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} response.Response
 // @Router /api/v1/user/info [get]
-func (u *UserApi) GetUserinfo(c *gin.Context) {
+func GetUserinfo(c *gin.Context) {
         claims, _ := c.Get("claims")
         userClaims := claims.(*utils.CustomClaims)
 
@@ -288,7 +287,7 @@ func (u *UserApi) GetUserinfo(c *gin.Context) {
 // @Param data body request.SetUserPassword true "密码信息"
 // @Success 200 {object} response.Response
 // @Router /api/v1/user/password [put]
-func (u *UserApi) ChangePassword(c *gin.Context) {
+func ChangePassword(c *gin.Context) {
         var req request.SetUserPassword
         if err := c.ShouldBindJSON(&req); err != nil {
                 response.FailWithMessage("参数错误: "+err.Error(), c)

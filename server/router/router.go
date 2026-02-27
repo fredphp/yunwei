@@ -53,6 +53,21 @@ func InitRouter(r *gin.Engine) {
                         // 用户信息
                         authGroup.GET("/user/info", auth.GetUserInfo)
                         authGroup.GET("/user/menus", system.GetUserMenus)
+                        authGroup.PUT("/user/password", system.ChangePassword)
+
+                        // ==================== 用户管理 ====================
+                        authGroup.GET("/users", middleware.RequirePermission("user:view"), system.GetUserList)
+                        authGroup.GET("/users/:id", middleware.RequirePermission("user:view"), system.GetUser)
+                        authGroup.POST("/users", middleware.RequirePermission("user:add"), system.CreateUser)
+                        authGroup.PUT("/users/:id", middleware.RequirePermission("user:edit"), system.UpdateUser)
+                        authGroup.DELETE("/users/:id", middleware.RequirePermission("user:delete"), system.DeleteUser)
+
+                        // ==================== 菜单管理 ====================
+                        authGroup.GET("/menus", middleware.RequirePermission("menu:view"), system.GetMenuList)
+                        authGroup.GET("/menus/:id", middleware.RequirePermission("menu:view"), system.GetMenu)
+                        authGroup.POST("/menus", middleware.RequirePermission("menu:add"), system.CreateMenu)
+                        authGroup.PUT("/menus/:id", middleware.RequirePermission("menu:edit"), system.UpdateMenu)
+                        authGroup.DELETE("/menus/:id", middleware.RequirePermission("menu:delete"), system.DeleteMenu)
 
                         // ==================== 权限管理 ====================
                         // 获取当前用户权限
