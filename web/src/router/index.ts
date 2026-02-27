@@ -128,6 +128,12 @@ const routes: RouteRecordRaw[] = [
       },
       // 租户管理
       {
+        path: 'tenant',
+        name: 'Tenant',
+        redirect: '/tenant/list',
+        meta: { title: '租户管理', icon: 'OfficeBuilding' }
+      },
+      {
         path: 'tenant/list',
         name: 'TenantList',
         component: () => import('@/views/tenant/list/index.vue'),

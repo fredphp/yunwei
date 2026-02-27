@@ -336,12 +336,7 @@ func initRoles() {
 }
 
 func initMenus() {
-        var count int64
-        DB.Model(&system.SysMenu{}).Count(&count)
-        if count > 0 {
-                return
-        }
-
+        // 定义所有菜单
         menus := []system.SysMenu{
                 // 一级菜单
                 {ParentID: 0, Title: "仪表盘", Name: "Dashboard", Path: "/dashboard", Component: "views/dashboard/index", Icon: "Odometer", Sort: 1, Status: 1, Hidden: 0},
@@ -379,8 +374,16 @@ func initMenus() {
                 {ParentID: 16, Title: "菜单管理", Name: "MenuManage", Path: "/system/menu", Component: "views/system/menu/index", Icon: "Menu", Sort: 3, Status: 1, Hidden: 0},
         }
 
+        // 增量添加菜单：只添加不存在的菜单
         for _, menu := range menus {
-                DB.Create(&menu)
+                var existingMenu system.SysMenu
+                result := DB.Where("name = ? AND parent_id = ?", menu.Name, menu.ParentID).First(&existingMenu)
+                if result.Error != nil {
+                        // 菜单不存在，创建它
+                        if err := DB.Create(&menu).Error; err != nil {
+                                fmt.Printf("创建菜单 %s 失败: %v\n", menu.Name, err)
+                        }
+                }
         }
 }
 
