@@ -12,7 +12,6 @@ import (
 var (
         DB     *gorm.DB
         Logger *zap.Logger
-        CONFIG *config.Config
 )
 
 func InitDB() {
