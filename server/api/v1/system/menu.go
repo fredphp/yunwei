@@ -79,6 +79,14 @@ func CreateMenu(c *gin.Context) {
                 return
         }
 
+        // 检查同一父菜单下名称是否已存在
+        var existCount int64
+        global.DB.Model(&system.SysMenu{}).Where("name = ? AND parent_id = ? AND deleted_at IS NULL", req.Name, req.ParentID).Count(&existCount)
+        if existCount > 0 {
+                response.FailWithMessage("同一层级下已存在相同名称的菜单", c)
+                return
+        }
+
         menu := system.SysMenu{
                 ParentID:  req.ParentID,
                 Title:     req.Title,
@@ -92,7 +100,7 @@ func CreateMenu(c *gin.Context) {
         }
 
         if err := global.DB.Create(&menu).Error; err != nil {
-                response.FailWithMessage("创建失败", c)
+                response.FailWithMessage("创建失败: "+err.Error(), c)
                 return
         }
 
@@ -114,6 +122,14 @@ func UpdateMenu(c *gin.Context) {
                 return
         }
 
+        // 检查同一父菜单下名称是否已存在（排除自身）
+        var existCount int64
+        global.DB.Model(&system.SysMenu{}).Where("name = ? AND parent_id = ? AND id != ? AND deleted_at IS NULL", req.Name, req.ParentID, req.ID).Count(&existCount)
+        if existCount > 0 {
+                response.FailWithMessage("同一层级下已存在相同名称的菜单", c)
+                return
+        }
+
         updates := map[string]interface{}{
                 "parent_id":  req.ParentID,
                 "title":      req.Title,
@@ -129,7 +145,7 @@ func UpdateMenu(c *gin.Context) {
         }
 
         if err := global.DB.Model(&system.SysMenu{}).Where("id = ?", req.ID).Updates(updates).Error; err != nil {
-                response.FailWithMessage("更新失败", c)
+                response.FailWithMessage("更新失败: "+err.Error(), c)
                 return
         }
 

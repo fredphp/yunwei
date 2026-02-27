@@ -122,6 +122,24 @@ func autoMigrate() {
         ); err != nil {
                 fmt.Println("HA表迁移警告: " + err.Error())
         }
+
+        // 创建唯一索引
+        createUniqueIndexes()
+}
+
+// createUniqueIndexes 创建唯一索引
+func createUniqueIndexes() {
+        // 菜单表：同一父菜单下名称唯一
+        DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_menu_name_parent ON sys_menus(name, parent_id)")
+        
+        // API表：路径和方法唯一
+        DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_api_path_method ON sys_apis(path, method)")
+        
+        // 角色-API关联：角色和API唯一
+        DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_role_api ON sys_role_apis(role_id, api_id)")
+        
+        // 角色-菜单关联：角色和菜单唯一
+        DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_role_menu ON sys_role_menus(role_id, menu_id)")
 }
 
 func initData() {
