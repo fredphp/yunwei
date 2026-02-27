@@ -301,7 +301,7 @@
               </el-button>
             </div>
           </div>
-          <el-empty v-else description="点击"开始部署"执行部署任务" />
+          <el-empty v-else description='点击"开始部署"执行部署任务' />
         </el-card>
       </el-col>
     </el-row>
