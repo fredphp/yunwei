@@ -3,7 +3,87 @@
 CREATE DATABASE IF NOT EXISTS `yunwei` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `yunwei`;
 
--- ==================== 用户认证 ====================
+-- ==================== 系统用户表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `username` varchar(64) NOT NULL COMMENT '用户名',
+  `password` varchar(128) NOT NULL COMMENT '密码',
+  `nick_name` varchar(64) DEFAULT NULL COMMENT '昵称',
+  `email` varchar(128) DEFAULT NULL COMMENT '邮箱',
+  `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
+  `avatar` varchar(255) DEFAULT NULL COMMENT '头像',
+  `role_id` bigint unsigned DEFAULT NULL COMMENT '角色ID',
+  `status` tinyint DEFAULT 1 COMMENT '状态: 1启用, 0禁用',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_username` (`username`),
+  KEY `idx_deleted_at` (`deleted_at`),
+  KEY `idx_role_id` (`role_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统用户表';
+
+-- ==================== 角色表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_roles` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `name` varchar(64) NOT NULL COMMENT '角色名称',
+  `keyword` varchar(64) NOT NULL COMMENT '角色关键字',
+  `description` varchar(255) DEFAULT NULL COMMENT '角色描述',
+  `status` tinyint DEFAULT 1 COMMENT '状态: 1启用, 0禁用',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_keyword` (`keyword`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
+
+-- ==================== 菜单表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_menus` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `parent_id` bigint unsigned DEFAULT 0 COMMENT '父菜单ID',
+  `title` varchar(64) NOT NULL COMMENT '菜单标题',
+  `name` varchar(64) NOT NULL COMMENT '路由名称',
+  `path` varchar(255) DEFAULT NULL COMMENT '路由路径',
+  `component` varchar(255) DEFAULT NULL COMMENT '组件路径',
+  `icon` varchar(64) DEFAULT NULL COMMENT '菜单图标',
+  `sort` int DEFAULT 0 COMMENT '排序',
+  `status` tinyint DEFAULT 1 COMMENT '状态: 1启用, 0禁用',
+  `hidden` tinyint DEFAULT 0 COMMENT '是否隐藏: 1隐藏, 0显示',
+  PRIMARY KEY (`id`),
+  KEY `idx_deleted_at` (`deleted_at`),
+  KEY `idx_parent_id` (`parent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='菜单表';
+
+-- ==================== 角色菜单关联表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_role_menus` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `role_id` bigint unsigned NOT NULL COMMENT '角色ID',
+  `menu_id` bigint unsigned NOT NULL COMMENT '菜单ID',
+  PRIMARY KEY (`id`),
+  KEY `idx_role_id` (`role_id`),
+  KEY `idx_menu_id` (`menu_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色菜单关联表';
+
+-- ==================== 角色API关联表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_role_apis` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `role_id` bigint unsigned NOT NULL COMMENT '角色ID',
+  `api_id` bigint unsigned NOT NULL COMMENT 'API ID',
+  PRIMARY KEY (`id`),
+  KEY `idx_role_id` (`role_id`),
+  KEY `idx_api_id` (`api_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色API关联表';
+
+-- ==================== 用户认证 (兼容旧表) ====================
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -225,9 +305,49 @@ CREATE TABLE IF NOT EXISTS `alerts` (
 
 -- ==================== 初始化数据 ====================
 
--- 管理员用户 (密码: admin123)
+-- 初始化角色
+INSERT INTO `sys_roles` (`name`, `keyword`, `description`, `status`) VALUES
+('超级管理员', 'admin', '系统超级管理员，拥有所有权限', 1),
+('运维人员', 'operator', '运维人员，拥有服务器管理权限', 1),
+('普通用户', 'user', '普通用户，只有查看权限', 1);
+
+-- 初始化菜单
+INSERT INTO `sys_menus` (`parent_id`, `title`, `name`, `path`, `component`, `icon`, `sort`, `status`, `hidden`) VALUES
+-- 一级菜单
+(0, '仪表盘', 'Dashboard', '/dashboard', 'views/dashboard/index', 'Odometer', 1, 1, 0),
+(0, '服务器管理', 'Servers', '/servers', 'Layout', 'Monitor', 2, 1, 0),
+(0, 'Kubernetes', 'Kubernetes', '/kubernetes', 'Layout', 'Grid', 3, 1, 0),
+(0, '灰度发布', 'Canary', '/canary', 'Layout', 'Promotion', 4, 1, 0),
+(0, '负载均衡', 'LoadBalancer', '/loadbalancer', 'Layout', 'Connection', 5, 1, 0),
+(0, '证书管理', 'Certificate', '/certificate', 'Layout', 'DocumentChecked', 6, 1, 0),
+(0, 'CDN管理', 'CDN', '/cdn', 'Layout', 'Position', 7, 1, 0),
+(0, '智能部署', 'Deploy', '/deploy', 'Layout', 'Upload', 8, 1, 0),
+(0, '任务调度', 'Scheduler', '/scheduler', 'Layout', 'Timer', 9, 1, 0),
+(0, 'Agent管理', 'Agents', '/agents', 'Layout', 'Cpu', 10, 1, 0),
+(0, '高可用', 'HA', '/ha', 'Layout', 'CircleCheck', 11, 1, 0),
+(0, '灾备备份', 'Backup', '/backup', 'Layout', 'Files', 12, 1, 0),
+(0, '成本控制', 'Cost', '/cost', 'Layout', 'Coin', 13, 1, 0),
+(0, '系统管理', 'System', '/system', 'Layout', 'Setting', 14, 1, 0),
+
+-- 服务器管理子菜单
+(2, '服务器列表', 'ServerList', '/servers/list', 'views/servers/index', 'List', 1, 1, 0),
+(2, '告警管理', 'Alerts', '/servers/alerts', 'views/alerts/index', 'Bell', 2, 1, 0),
+
+-- Kubernetes子菜单
+(3, '集群管理', 'Clusters', '/kubernetes/clusters', 'views/kubernetes/index', 'Cluster', 1, 1, 0),
+
+-- 系统管理子菜单
+(14, '用户管理', 'UserManage', '/system/user', 'views/system/user/index', 'User', 1, 1, 0),
+(14, '角色管理', 'RoleManage', '/system/role', 'views/system/role/index', 'UserFilled', 2, 1, 0),
+(14, '菜单管理', 'MenuManage', '/system/menu', 'views/system/menu/index', 'Menu', 3, 1, 0);
+
+-- 初始化超级管理员用户 (密码: admin123, MD5加密后)
+INSERT INTO `sys_users` (`username`, `password`, `nick_name`, `email`, `role_id`, `status`) VALUES
+('admin', '0192023a7bbd73250516f069df18b500', '超级管理员', 'admin@example.com', 1, 1);
+
+-- 管理员用户 (兼容旧表, 密码: admin123)
 INSERT INTO `users` (`username`, `password`, `nick_name`, `email`, `role`, `status`) VALUES
-('admin', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员', 'admin@example.com', 'admin', 1);
+('admin', '0192023a7bbd73250516f069df18b500', '系统管理员', 'admin@example.com', 'admin', 1);
 
 -- 服务器分组
 INSERT INTO `server_groups` (`name`, `description`) VALUES
