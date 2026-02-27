@@ -34,7 +34,6 @@ func Login(c *gin.Context) {
                 Password string
                 NickName string
                 Role     string
-                RoleID   uint
                 Status   int
         }
 
@@ -58,13 +57,8 @@ func Login(c *gin.Context) {
                 return
         }
 
-        // 生成 Token - 使用 role_id，如果没有则默认为 0
-        roleID := user.RoleID
-        if roleID == 0 && user.Role == "admin" {
-                roleID = 1 // 管理员角色
-        }
-        
-        token, err := utils.GenerateToken(user.ID, user.Username, user.NickName, roleID)
+        // 生成 Token
+        token, err := utils.GenerateToken(user.ID, user.Username, user.Role, 0)
         if err != nil {
                 response.FailWithMessage("生成Token失败", c)
                 return

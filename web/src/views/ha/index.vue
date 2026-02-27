@@ -289,7 +289,7 @@ const events = ref([
 const fetchNodes = async () => {
   loading.value = true
   try {
-    const res = await request.get('/ha/nodes')
+    const res = await request.get('/api/v1/ha/nodes')
     // nodes.value = res.data || []
   } catch (error) {
     console.error('获取节点失败', error)
@@ -308,19 +308,19 @@ const viewMetrics = (node: any) => {
 }
 
 const enableNode = async (node: any) => {
-  await request.post(`/ha/nodes/${node.id}/enable`)
+  await request.post(`/api/v1/ha/nodes/${node.id}/enable`)
   ElMessage.success('节点已启用')
 }
 
 const disableNode = async (node: any) => {
-  await request.post(`/ha/nodes/${node.id}/disable`)
+  await request.post(`/api/v1/ha/nodes/${node.id}/disable`)
   ElMessage.success('节点已禁用')
 }
 
 const resignLeader = async () => {
   try {
     await ElMessageBox.confirm('确定要辞职 Leader 吗？将触发重新选举', '提示', { type: 'warning' })
-    await request.post('/ha/leader/resign')
+    await request.post('/api/v1/ha/leader/resign')
     ElMessage.success('已提交辞职请求')
   } catch {}
 }
@@ -328,7 +328,7 @@ const resignLeader = async () => {
 const forceLeader = async () => {
   try {
     await ElMessageBox.confirm('确定强制指定该节点为 Leader？', '警告', { type: 'warning' })
-    await request.post('/ha/leader/force', { nodeId: forceLeaderNode.value })
+    await request.post('/api/v1/ha/leader/force', { nodeId: forceLeaderNode.value })
     ElMessage.success('已强制指定')
     showForceLeaderDialog.value = false
   } catch {}
@@ -337,7 +337,7 @@ const forceLeader = async () => {
 const triggerFailover = async () => {
   try {
     await ElMessageBox.confirm('确定触发故障转移？', '警告', { type: 'warning' })
-    await request.post('/ha/failover/trigger')
+    await request.post('/api/v1/ha/failover/trigger')
     ElMessage.success('故障转移已触发')
     failoverInProgress.value = true
   } catch {}
@@ -346,7 +346,7 @@ const triggerFailover = async () => {
 const forceReleaseLock = async (lock: any) => {
   try {
     await ElMessageBox.confirm('确定强制释放该锁？', '提示', { type: 'warning' })
-    await request.post(`/ha/locks/${lock.key}/release`)
+    await request.post(`/api/v1/ha/locks/${lock.key}/release`)
     ElMessage.success('锁已释放')
   } catch {}
 }

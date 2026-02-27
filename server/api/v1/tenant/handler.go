@@ -7,25 +7,21 @@ import (
         tenantMiddleware "yunwei/middleware/tenant"
         tenantService "yunwei/service/tenant"
         "github.com/gin-gonic/gin"
-        "gorm.io/gorm"
 )
 
 // Handler 租户API处理器
 type Handler struct {
-        db           *gorm.DB
         tenantSvc    *tenantService.TenantService
         isolationSvc *tenantService.IsolationService
         rbacSvc      *tenantService.RBACService
 }
 
 func NewHandler(
-        db *gorm.DB,
         tenantSvc *tenantService.TenantService,
         isolationSvc *tenantService.IsolationService,
         rbacSvc *tenantService.RBACService,
 ) *Handler {
         return &Handler{
-                db:           db,
                 tenantSvc:    tenantSvc,
                 isolationSvc: isolationSvc,
                 rbacSvc:      rbacSvc,
@@ -45,33 +41,6 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
                 tenants.POST("/:id/suspend", h.SuspendTenant)
                 tenants.POST("/:id/activate", h.ActivateTenant)
                 tenants.POST("/:id/upgrade", h.UpgradePlan)
-        }
-
-        // 账单管理（平台管理员）
-        billings := r.Group("/admin/billings")
-        {
-                billings.GET("", h.ListBillings)
-                billings.GET("/stats", h.GetBillingStats)
-                billings.GET("/:id", h.GetBilling)
-                billings.POST("", h.CreateBilling)
-                billings.POST("/generate", h.GenerateBillings)
-                billings.POST("/:id/paid", h.MarkBillingPaid)
-        }
-
-        // 套餐管理（平台管理员）
-        plans := r.Group("/admin/plans")
-        {
-                plans.GET("", h.ListPlans)
-                plans.PUT("/:key", h.UpdatePlan)
-        }
-
-        // 审计日志（平台管理员）
-        auditLogs := r.Group("/admin/audit-logs")
-        {
-                auditLogs.GET("", h.ListAuditLogsAdmin)
-                auditLogs.GET("/stats", h.GetAuditStats)
-                auditLogs.GET("/:id", h.GetAuditLog)
-                auditLogs.POST("", h.CreateAuditLog)
         }
 
         // 租户内部管理（租户管理员）

@@ -25,22 +25,14 @@ const (
         SecurityEventSuspicious   SecurityEventType = "suspicious"
 )
 
-// EventSeverity 事件严重级别
-type EventSeverity string
+// GuardSecurityLevel 安全级别
+type GuardSecurityLevel string
 
 const (
-        EventSeverityLow      EventSeverity = "low"
-        EventSeverityMedium   EventSeverity = "medium"
-        EventSeverityHigh     EventSeverity = "high"
-        EventSeverityCritical EventSeverity = "critical"
-)
-
-// SecurityLevel 常量 (guard专用)
-const (
-        SecurityLevelLow      SecurityLevel = "low"
-        SecurityLevelMedium   SecurityLevel = "medium"
-        SecurityLevelHigh     SecurityLevel = "high"
-        SecurityLevelCritical SecurityLevel = "critical"
+        GuardSecurityLevelLow      GuardSecurityLevel = "low"
+        GuardSecurityLevelMedium   GuardSecurityLevel = "medium"
+        GuardSecurityLevelHigh     GuardSecurityLevel = "high"
+        GuardSecurityLevelCritical GuardSecurityLevel = "critical"
 )
 
 // SecurityEvent 安全事件
@@ -52,7 +44,7 @@ type SecurityEvent struct {
         ServerName  string           `json:"serverName" gorm:"type:varchar(64)"`
         
         EventType   SecurityEventType `json:"eventType" gorm:"type:varchar(32)"`
-        Level       SecurityLevel     `json:"level" gorm:"type:varchar(16)"`
+        Level       GuardSecurityLevel     `json:"level" gorm:"type:varchar(16)"`
         
         // 来源信息
         SourceIP    string           `json:"sourceIp" gorm:"type:varchar(45);index"`
@@ -178,7 +170,7 @@ type SecurityRule struct {
         BanDuration int               `json:"banDuration"` // 封禁时长(秒)，0为永久
         
         // 级别
-        Level       SecurityLevel     `json:"level" gorm:"type:varchar(16)"`
+        Level       GuardSecurityLevel     `json:"level" gorm:"type:varchar(16)"`
 }
 
 func (SecurityRule) TableName() string {
@@ -209,7 +201,7 @@ func GetDefaultSecurityRules() []SecurityRule {
                         TimeWindow:  300,    // 5分钟内
                         Action:      "ban",
                         BanDuration: 3600,   // 封禁1小时
-                        Level:       SecurityLevelHigh,
+                        Level:       GuardSecurityLevelHigh,
                 },
                 // 异常登录检测
                 {
@@ -219,7 +211,7 @@ func GetDefaultSecurityRules() []SecurityRule {
                         Threshold:   1,
                         TimeWindow:  0,
                         Action:      "alert",
-                        Level:       SecurityLevelMedium,
+                        Level:       GuardSecurityLevelMedium,
                 },
                 // 端口扫描检测
                 {
@@ -230,7 +222,7 @@ func GetDefaultSecurityRules() []SecurityRule {
                         TimeWindow:  60,     // 1分钟内
                         Action:      "ban",
                         BanDuration: 7200,   // 封禁2小时
-                        Level:       SecurityLevelHigh,
+                        Level:       GuardSecurityLevelHigh,
                 },
                 // DDoS检测
                 {
@@ -241,7 +233,7 @@ func GetDefaultSecurityRules() []SecurityRule {
                         TimeWindow:  10,     // 10秒内
                         Action:      "ban",
                         BanDuration: 0,      // 永久封禁
-                        Level:       SecurityLevelCritical,
+                        Level:       GuardSecurityLevelCritical,
                 },
                 // 恶意IP检测
                 {
@@ -252,7 +244,7 @@ func GetDefaultSecurityRules() []SecurityRule {
                         TimeWindow:  0,
                         Action:      "ban",
                         BanDuration: 0,
-                        Level:       SecurityLevelCritical,
+                        Level:       GuardSecurityLevelCritical,
                 },
         }
 }
@@ -303,7 +295,7 @@ func (g *SecurityGuard) AnalyzeLogin(record *LoginRecord) (*SecurityEvent, error
                         ServerID:    record.ServerID,
                         ServerName:  record.ServerName,
                         EventType:   SecurityEventLoginAbnormal,
-                        Level:       SecurityLevelMedium,
+                        Level:       GuardSecurityLevelMedium,
                         SourceIP:    record.IP,
                         SourcePort:  record.Port,
                         TargetUser:  record.User,
@@ -335,7 +327,7 @@ func (g *SecurityGuard) DetectBruteForce(ip string, timeWindow int) (*SecurityEv
                                 // 创建安全事件
                                 event := &SecurityEvent{
                                         EventType:   SecurityEventBruteForce,
-                                        Level:       SecurityLevel(rule.Level),
+                                        Level:       GuardSecurityLevel(rule.Level),
                                         SourceIP:    ip,
                                         Description: fmt.Sprintf("检测到SSH暴力破解，%d秒内失败%d次", timeWindow, failCount),
                                         Status:      "new",
@@ -525,7 +517,7 @@ func (g *SecurityGuard) DetectPortScan(ip string, ports []int, timeWindow int) (
                         if len(ports) >= rule.Threshold {
                                 event := &SecurityEvent{
                                         EventType:   SecurityEventPortScan,
-                                        Level:       SecurityLevel(rule.Level),
+                                        Level:       GuardSecurityLevel(rule.Level),
                                         SourceIP:    ip,
                                         Description: fmt.Sprintf("检测到端口扫描，扫描了%d个端口", len(ports)),
                                         Status:      "new",
@@ -639,8 +631,8 @@ func (g *SecurityGuard) GetSecurityStats(days int) map[string]int64 {
         // 事件统计
         var totalEvents, criticalEvents, highEvents int64
         global.DB.Model(&SecurityEvent{}).Where("created_at > ?", since).Count(&totalEvents)
-        global.DB.Model(&SecurityEvent{}).Where("created_at > ? AND level = ?", since, SecurityLevelCritical).Count(&criticalEvents)
-        global.DB.Model(&SecurityEvent{}).Where("created_at > ? AND level = ?", since, SecurityLevelHigh).Count(&highEvents)
+        global.DB.Model(&SecurityEvent{}).Where("created_at > ? AND level = ?", since, GuardSecurityLevelCritical).Count(&criticalEvents)
+        global.DB.Model(&SecurityEvent{}).Where("created_at > ? AND level = ?", since, GuardSecurityLevelHigh).Count(&highEvents)
         stats["totalEvents"] = totalEvents
         stats["criticalEvents"] = criticalEvents
         stats["highEvents"] = highEvents

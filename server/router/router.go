@@ -14,11 +14,9 @@ import (
         haApi "yunwei/api/v1/ha"
         backupApi "yunwei/api/v1/backup"
         costApi "yunwei/api/v1/cost"
+        tenantApi "yunwei/api/v1/tenant"
         "yunwei/api/v1/system"
         "yunwei/middleware"
-        "yunwei/global"
-        tenantApi "yunwei/api/v1/tenant"
-        tenantService "yunwei/service/tenant"
         "yunwei/websocket"
 
         "github.com/gin-gonic/gin"
@@ -53,21 +51,6 @@ func InitRouter(r *gin.Engine) {
                         // 用户信息
                         authGroup.GET("/user/info", auth.GetUserInfo)
                         authGroup.GET("/user/menus", system.GetUserMenus)
-                        authGroup.PUT("/user/password", system.ChangePassword)
-
-                        // ==================== 用户管理 ====================
-                        authGroup.GET("/users", middleware.RequirePermission("user:view"), system.GetUserList)
-                        authGroup.GET("/users/:id", middleware.RequirePermission("user:view"), system.GetUser)
-                        authGroup.POST("/users", middleware.RequirePermission("user:add"), system.CreateUser)
-                        authGroup.PUT("/users/:id", middleware.RequirePermission("user:edit"), system.UpdateUser)
-                        authGroup.DELETE("/users/:id", middleware.RequirePermission("user:delete"), system.DeleteUser)
-
-                        // ==================== 菜单管理 ====================
-                        authGroup.GET("/menus", middleware.RequirePermission("menu:view"), system.GetMenuList)
-                        authGroup.GET("/menus/:id", middleware.RequirePermission("menu:view"), system.GetMenu)
-                        authGroup.POST("/menus", middleware.RequirePermission("menu:add"), system.CreateMenu)
-                        authGroup.PUT("/menus/:id", middleware.RequirePermission("menu:edit"), system.UpdateMenu)
-                        authGroup.DELETE("/menus/:id", middleware.RequirePermission("menu:delete"), system.DeleteMenu)
 
                         // ==================== 权限管理 ====================
                         // 获取当前用户权限
@@ -101,14 +84,14 @@ func InitRouter(r *gin.Engine) {
                         // - AI分析: server:analyze (管理员、运维)
                         servers := authGroup.Group("/servers")
                         {
-                                // 查看类操作 - 登录用户即可访问
-                                servers.GET("", server.GetServerList)
-                                servers.GET("/:id", server.GetServer)
-                                servers.GET("/:id/metrics", server.GetServerMetrics)
-                                servers.GET("/:id/logs", server.GetServerLogs)
-                                servers.GET("/:id/containers", server.GetDockerContainers)
-                                servers.GET("/:id/ports", server.GetPortInfos)
-                                servers.POST("/:id/refresh", server.RefreshStatus)
+                                // 查看类操作 - 需要 server:view 权限
+                                servers.GET("", middleware.RequirePermission("server:view"), server.GetServerList)
+                                servers.GET("/:id", middleware.RequirePermission("server:view"), server.GetServer)
+                                servers.GET("/:id/metrics", middleware.RequirePermission("server:view"), server.GetServerMetrics)
+                                servers.GET("/:id/logs", middleware.RequirePermission("server:view"), server.GetServerLogs)
+                                servers.GET("/:id/containers", middleware.RequirePermission("server:view"), server.GetDockerContainers)
+                                servers.GET("/:id/ports", middleware.RequirePermission("server:view"), server.GetPortInfos)
+                                servers.POST("/:id/refresh", middleware.RequirePermission("server:view"), server.RefreshStatus)
 
                                 // 添加服务器 - 需要 server:add 权限 (管理员)
                                 servers.POST("", middleware.RequirePermission("server:add"), server.AddServer)
@@ -136,7 +119,7 @@ func InitRouter(r *gin.Engine) {
                         // - 删除分组: server_group:delete (管理员)
                         groups := authGroup.Group("/groups")
                         {
-                                groups.GET("", server.GetGroups)
+                                groups.GET("", middleware.RequirePermission("server_group:view"), server.GetGroups)
                                 groups.POST("", middleware.RequirePermission("server_group:add"), server.CreateGroup)
                                 groups.DELETE("/:id", middleware.RequirePermission("server_group:delete"), server.DeleteGroup)
                         }
@@ -177,7 +160,7 @@ func InitRouter(r *gin.Engine) {
                                 // 集群管理 - 查看权限
                                 k8s.GET("/clusters", middleware.RequirePermission("k8s:view"), kubernetes.GetClusters)
                                 k8s.GET("/clusters/:id", middleware.RequirePermission("k8s:view"), kubernetes.GetCluster)
-                                k8s.GET("/clusters/:id/deployments", middleware.RequirePermission("k8s:view"), kubernetes.GetDeploymentStatus)
+                                k8s.GET("/clusters/:clusterId/deployments", middleware.RequirePermission("k8s:view"), kubernetes.GetDeploymentStatus)
 
                                 // 集群管理 - 添加权限 (管理员)
                                 k8s.POST("/clusters", middleware.RequirePermission("k8s:add"), kubernetes.AddCluster)
@@ -191,7 +174,7 @@ func InitRouter(r *gin.Engine) {
                                 // 扩容管理
                                 k8s.GET("/scale/history", middleware.RequirePermission("k8s:view"), kubernetes.GetScaleHistory)
                                 k8s.POST("/scale/manual", middleware.RequirePermission("k8s:scale"), kubernetes.ManualScale)
-                                k8s.POST("/clusters/:id/analyze", middleware.RequirePermission("k8s:view"), kubernetes.AnalyzeScale)
+                                k8s.POST("/clusters/:clusterId/analyze", middleware.RequirePermission("k8s:view"), kubernetes.AnalyzeScale)
 
                                 // HPA 配置
                                 k8s.GET("/hpa", middleware.RequirePermission("k8s:view"), kubernetes.GetHPAConfigs)
@@ -485,11 +468,7 @@ func InitRouter(r *gin.Engine) {
                         // ==================== 多租户系统 ====================
                         tenantGroup := authGroup.Group("")
                         {
-                                tenantSvc := tenantService.NewTenantService(global.DB)
-                                isolationSvc := tenantService.NewIsolationService(global.DB)
-                                rbacSvc := tenantService.NewRBACService(global.DB)
-                                tenantHandler := tenantApi.NewHandler(global.DB, tenantSvc, isolationSvc, rbacSvc)
-                                tenantHandler.RegisterRoutes(tenantGroup)
+                                tenantApi.RegisterRoutes(tenantGroup, tenantApi.NewHandler())
                         }
                 }
         }

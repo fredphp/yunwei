@@ -240,6 +240,16 @@ func (p *AdvancedPredictor) PredictDiskFull(serverID uint, history []server.Serv
                 }
         }
 
+        confidence := 0.6
+        if stats.StdDev < 5 {
+                confidence = 0.9
+        }
+
+        trendDir := "stable"
+        if stats.ChangeRate > 0 {
+                trendDir = "up"
+        }
+
         result := &PredictionResult{
                 ServerID:       serverID,
                 Type:           PredictionDisk,
@@ -247,18 +257,8 @@ func (p *AdvancedPredictor) PredictDiskFull(serverID uint, history []server.Serv
                 CurrentValue:   stats.Last,
                 PredictedValue: stats.Last + stats.ChangeRate*24,
                 PredictedAt:    time.Now().Add(24 * time.Hour),
-                Confidence:     func() float64 {
-                        if stats.StdDev < 5 {
-                                return 0.9
-                        }
-                        return 0.6
-                }(),
-                Trend:       func() string {
-                        if stats.ChangeRate > 0 {
-                                return "up"
-                        }
-                        return "stable"
-                }(),
+                Confidence:     confidence,
+                Trend:          trendDir,
                 TrendRate:      stats.ChangeRate,
                 Summary:        fmt.Sprintf("磁盘使用率 %.1f%%，预计 %.1f 天后满", stats.Last, daysToFull),
                 Suggestions:    suggestions,
@@ -335,12 +335,7 @@ func (p *AdvancedPredictor) PredictTrafficPeak(serverID uint, history []server.S
                 PredictedValue: maxTraffic,
                 PredictedAt:    time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), maxHour, 0, 0, 0, time.Local),
                 Confidence:     0.7,
-                Trend: func() string {
-                        if currentTraffic < maxTraffic {
-                                return "up"
-                        }
-                        return "stable"
-                }(),
+                Trend:          currentTraffic < maxTraffic ? "up" : "stable",
                 Summary:        summary,
                 Suggestions:    suggestions,
         }

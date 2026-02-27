@@ -7,10 +7,169 @@ import (
         "time"
 
         "yunwei/global"
-        "yunwei/model/kubernetes"
         "yunwei/service/ai/llm"
-        "yunwei/service/notify"
+        "yunwei/model/notify"
 )
+
+// ScaleStatus 扩容状态
+type ScaleStatus string
+
+const (
+        ScaleStatusPending   ScaleStatus = "pending"
+        ScaleStatusRunning   ScaleStatus = "running"
+        ScaleStatusSuccess   ScaleStatus = "success"
+        ScaleStatusFailed    ScaleStatus = "failed"
+        ScaleStatusRollback  ScaleStatus = "rollback"
+)
+
+// ScaleType 扩容类型
+type ScaleType string
+
+const (
+        ScaleTypeHorizontal ScaleType = "horizontal" // HPA 水平扩容
+        ScaleTypeVertical   ScaleType = "vertical"   // VPA 垂直扩容
+        ScaleTypeManual     ScaleType = "manual"     // 手动扩容
+        ScaleTypeAuto       ScaleType = "auto"       // 自动扩容
+)
+
+// ScaleEvent 扩容事件
+type ScaleEvent struct {
+        ID          uint      `json:"id" gorm:"primarykey"`
+        CreatedAt   time.Time `json:"createdAt"`
+
+        ClusterID   uint           `json:"clusterId" gorm:"index"`
+        Cluster     *Cluster       `json:"cluster" gorm:"foreignKey:ClusterID"`
+
+        // 扩容信息
+        Namespace   string     `json:"namespace" gorm:"type:varchar(64)"`
+        Deployment  string     `json:"deployment" gorm:"type:varchar(128)"`
+        ScaleType   ScaleType  `json:"scaleType" gorm:"type:varchar(16)"`
+        Status      ScaleStatus `json:"status" gorm:"type:varchar(16)"`
+
+        // 副本数
+        ReplicasBefore int `json:"replicasBefore"`
+        ReplicasAfter  int `json:"replicasAfter"`
+        ReplicasTarget int `json:"replicasTarget"`
+
+        // 触发原因
+        TriggerReason string `json:"triggerReason" gorm:"type:text"`
+        TriggerMetric string `json:"triggerMetric" gorm:"type:text"` // JSON 触发指标
+
+        // AI 决策
+        AIDecision    string `json:"aiDecision" gorm:"type:text"`
+        AIConfidence  float64 `json:"aiConfidence"`
+        AIAutoApprove bool   `json:"aiAutoApprove"`
+
+        // 执行信息
+        Commands       string `json:"commands" gorm:"type:text"`
+        ExecutionLog   string `json:"executionLog" gorm:"type:text"`
+        ErrorMessage   string `json:"errorMessage" gorm:"type:text"`
+
+        // 时间
+        StartedAt   *time.Time `json:"startedAt"`
+        CompletedAt *time.Time `json:"completedAt"`
+        Duration    int64      `json:"duration"` // 毫秒
+}
+
+func (ScaleEvent) TableName() string {
+        return "k8s_scale_events"
+}
+
+// Cluster Kubernetes 集群
+type Cluster struct {
+        ID          uint      `json:"id" gorm:"primarykey"`
+        CreatedAt   time.Time `json:"createdAt"`
+        UpdatedAt   time.Time `json:"updatedAt"`
+
+        Name        string `json:"name" gorm:"type:varchar(64)"`
+        APIEndpoint string `json:"apiEndpoint" gorm:"type:varchar(256)"`
+        Token       string `json:"token" gorm:"type:text"` // ServiceAccount Token
+        KubeConfig  string `json:"kubeConfig" gorm:"type:text"` // Kubeconfig 内容
+
+        // 状态
+        Status      string `json:"status" gorm:"type:varchar(16)"` // connected, disconnected, error
+        Version     string `json:"version" gorm:"type:varchar(32)"`
+        NodeCount   int    `json:"nodeCount"`
+
+        // 自动扩容配置
+        AutoScaleEnabled bool    `json:"autoScaleEnabled"`
+        MinReplicas      int     `json:"minReplicas"`
+        MaxReplicas      int     `json:"maxReplicas"`
+        CPUThreshold     float64 `json:"cpuThreshold"` // CPU 阈值
+        MemThreshold     float64 `json:"memThreshold"` // 内存阈值
+
+        // 最后同步
+        LastSyncAt *time.Time `json:"lastSyncAt"`
+}
+
+func (Cluster) TableName() string {
+        return "k8s_clusters"
+}
+
+// HPAConfig HPA 配置
+type HPAConfig struct {
+        ID        uint      `json:"id" gorm:"primarykey"`
+        CreatedAt time.Time `json:"createdAt"`
+        UpdatedAt time.Time `json:"updatedAt"`
+
+        ClusterID   uint `json:"clusterId" gorm:"index"`
+        Namespace   string `json:"namespace" gorm:"type:varchar(64)"`
+        Deployment  string `json:"deployment" gorm:"type:varchar(128)"`
+
+        // HPA 配置
+        MinReplicas    int     `json:"minReplicas"`
+        MaxReplicas    int     `json:"maxReplicas"`
+        TargetCPUUtil  float64 `json:"targetCpuUtil"` // 目标 CPU 使用率
+        TargetMemUtil  float64 `json:"targetMemUtil"` // 目标内存使用率
+
+        // 自定义指标
+        CustomMetrics string `json:"customMetrics" gorm:"type:text"` // JSON
+
+        // 行为配置
+        ScaleUpStabilization   int `json:"scaleUpStabilization"`   // 扩容稳定窗口(秒)
+        ScaleDownStabilization int `json:"scaleDownStabilization"` // 缩容稳定窗口(秒)
+
+        Enabled bool `json:"enabled"`
+}
+
+func (HPAConfig) TableName() string {
+        return "k8s_hpa_configs"
+}
+
+// DeploymentStatus Deployment 状态
+type DeploymentStatus struct {
+        ID        uint      `json:"id" gorm:"primarykey"`
+        CreatedAt time.Time `json:"createdAt"`
+
+        ClusterID   uint   `json:"clusterId" gorm:"index"`
+        Namespace   string `json:"namespace" gorm:"type:varchar(64)"`
+        Deployment  string `json:"deployment" gorm:"type:varchar(128)"`
+
+        // 状态
+        Replicas      int `json:"replicas"`
+        ReadyReplicas int `json:"readyReplicas"`
+        UpdatedReplicas int `json:"updatedReplicas"`
+
+        // 资源使用
+        CPUUsage    float64 `json:"cpuUsage"`
+        MemoryUsage float64 `json:"memoryUsage"`
+
+        // 请求
+        CPURequest    string `json:"cpuRequest"`
+        MemoryRequest string `json:"memoryRequest"`
+        CPULimit      string `json:"cpuLimit"`
+        MemoryLimit   string `json:"memoryLimit"`
+
+        // HPA 状态
+        HPAEnabled     bool    `json:"hpaEnabled"`
+        HPATargetCPU   float64 `json:"hpaTargetCpu"`
+        CurrentReplicas int    `json:"currentReplicas"`
+        DesiredReplicas int    `json:"desiredReplicas"`
+}
+
+func (DeploymentStatus) TableName() string {
+        return "k8s_deployment_status"
+}
 
 // AutoScaler 自动扩容器
 type AutoScaler struct {
@@ -21,9 +180,9 @@ type AutoScaler struct {
 
 // K8sExecutor K8s 执行器接口
 type K8sExecutor interface {
-        GetDeploymentStatus(clusterID uint, namespace, deployment string) (*kubernetes.DeploymentStatus, error)
+        GetDeploymentStatus(clusterID uint, namespace, deployment string) (*DeploymentStatus, error)
         ScaleDeployment(clusterID uint, namespace, deployment string, replicas int) error
-        ApplyHPA(clusterID uint, namespace, deployment string, config kubernetes.HPAConfig) error
+        ApplyHPA(clusterID uint, namespace, deployment string, config HPAConfig) error
         GetHPAStatus(clusterID uint, namespace, deployment string) (map[string]interface{}, error)
 }
 
@@ -48,7 +207,7 @@ func (s *AutoScaler) SetExecutor(executor K8sExecutor) {
 }
 
 // AnalyzeAndScale 分析并执行扩容
-func (s *AutoScaler) AnalyzeAndScale(cluster *kubernetes.Cluster, namespace, deployment string, metrics map[string]float64) (*kubernetes.ScaleEvent, error) {
+func (s *AutoScaler) AnalyzeAndScale(cluster *Cluster, namespace, deployment string, metrics map[string]float64) (*ScaleEvent, error) {
         // 获取当前状态
         currentStatus, err := s.executor.GetDeploymentStatus(cluster.ID, namespace, deployment)
         if err != nil {
@@ -62,12 +221,12 @@ func (s *AutoScaler) AnalyzeAndScale(cluster *kubernetes.Cluster, namespace, dep
         }
 
         // 创建扩容事件
-        event := &kubernetes.ScaleEvent{
+        event := &ScaleEvent{
                 ClusterID:      cluster.ID,
                 Namespace:      namespace,
                 Deployment:     deployment,
-                ScaleType:      kubernetes.ScaleTypeAuto,
-                Status:         kubernetes.ScaleStatusPending,
+                ScaleType:      ScaleTypeAuto,
+                Status:         ScaleStatusPending,
                 ReplicasBefore: currentStatus.Replicas,
                 ReplicasTarget: decision.TargetReplicas,
                 TriggerReason:  decision.Reason,
@@ -100,7 +259,7 @@ type ScaleDecision struct {
 }
 
 // analyzeWithAI AI 分析
-func (s *AutoScaler) analyzeWithAI(cluster *kubernetes.Cluster, status *kubernetes.DeploymentStatus, metrics map[string]float64) (*ScaleDecision, error) {
+func (s *AutoScaler) analyzeWithAI(cluster *Cluster, status *DeploymentStatus, metrics map[string]float64) (*ScaleDecision, error) {
         prompt := fmt.Sprintf(`你是一个 Kubernetes 运维专家。请分析以下 Deployment 状态并给出扩容建议。
 
 ## 当前状态
@@ -158,16 +317,16 @@ func (s *AutoScaler) analyzeWithAI(cluster *kubernetes.Cluster, status *kubernet
 }
 
 // executeScale 执行扩容
-func (s *AutoScaler) executeScale(event *kubernetes.ScaleEvent, targetReplicas int) (*kubernetes.ScaleEvent, error) {
-        event.Status = kubernetes.ScaleStatusRunning
+func (s *AutoScaler) executeScale(event *ScaleEvent, targetReplicas int) (*ScaleEvent, error) {
+        event.Status = ScaleStatusRunning
         now := time.Now()
         event.StartedAt = &now
         global.DB.Save(event)
 
         // 执行扩容命令
-        var cluster kubernetes.Cluster
+        var cluster Cluster
         if err := global.DB.First(&cluster, event.ClusterID).Error; err != nil {
-                event.Status = kubernetes.ScaleStatusFailed
+                event.Status = ScaleStatusFailed
                 event.ErrorMessage = "集群不存在"
                 global.DB.Save(event)
                 return event, err
@@ -175,7 +334,7 @@ func (s *AutoScaler) executeScale(event *kubernetes.ScaleEvent, targetReplicas i
 
         err := s.executor.ScaleDeployment(event.ClusterID, event.Namespace, event.Deployment, targetReplicas)
         if err != nil {
-                event.Status = kubernetes.ScaleStatusFailed
+                event.Status = ScaleStatusFailed
                 event.ErrorMessage = err.Error()
                 global.DB.Save(event)
                 return event, err
@@ -183,7 +342,7 @@ func (s *AutoScaler) executeScale(event *kubernetes.ScaleEvent, targetReplicas i
 
         // 更新状态
         completedAt := time.Now()
-        event.Status = kubernetes.ScaleStatusSuccess
+        event.Status = ScaleStatusSuccess
         event.ReplicasAfter = targetReplicas
         event.CompletedAt = &completedAt
         event.Duration = completedAt.Sub(*event.StartedAt).Milliseconds()
@@ -200,8 +359,8 @@ func (s *AutoScaler) executeScale(event *kubernetes.ScaleEvent, targetReplicas i
 }
 
 // ManualScale 手动扩容
-func (s *AutoScaler) ManualScale(clusterID uint, namespace, deployment string, targetReplicas int, reason string) (*kubernetes.ScaleEvent, error) {
-        var cluster kubernetes.Cluster
+func (s *AutoScaler) ManualScale(clusterID uint, namespace, deployment string, targetReplicas int, reason string) (*ScaleEvent, error) {
+        var cluster Cluster
         if err := global.DB.First(&cluster, clusterID).Error; err != nil {
                 return nil, fmt.Errorf("集群不存在")
         }
@@ -212,12 +371,12 @@ func (s *AutoScaler) ManualScale(clusterID uint, namespace, deployment string, t
                 return nil, fmt.Errorf("获取状态失败: %w", err)
         }
 
-        event := &kubernetes.ScaleEvent{
+        event := &ScaleEvent{
                 ClusterID:      clusterID,
                 Namespace:      namespace,
                 Deployment:     deployment,
-                ScaleType:      kubernetes.ScaleTypeManual,
-                Status:         kubernetes.ScaleStatusPending,
+                ScaleType:      ScaleTypeManual,
+                Status:         ScaleStatusPending,
                 ReplicasBefore: currentStatus.Replicas,
                 ReplicasTarget: targetReplicas,
                 TriggerReason:  reason,
@@ -229,14 +388,14 @@ func (s *AutoScaler) ManualScale(clusterID uint, namespace, deployment string, t
 }
 
 // SetupHPA 配置 HPA
-func (s *AutoScaler) SetupHPA(clusterID uint, namespace, deployment string, config kubernetes.HPAConfig) error {
+func (s *AutoScaler) SetupHPA(clusterID uint, namespace, deployment string, config HPAConfig) error {
         return s.executor.ApplyHPA(clusterID, namespace, deployment, config)
 }
 
 // GetScaleHistory 获取扩容历史
-func (s *AutoScaler) GetScaleHistory(clusterID uint, namespace, deployment string, limit int) ([]kubernetes.ScaleEvent, error) {
-        var events []kubernetes.ScaleEvent
-        query := global.DB.Model(&kubernetes.ScaleEvent{}).Order("created_at DESC")
+func (s *AutoScaler) GetScaleHistory(clusterID uint, namespace, deployment string, limit int) ([]ScaleEvent, error) {
+        var events []ScaleEvent
+        query := global.DB.Model(&ScaleEvent{}).Order("created_at DESC")
         if clusterID > 0 {
                 query = query.Where("cluster_id = ?", clusterID)
         }
@@ -259,7 +418,7 @@ func (s *AutoScaler) MonitorClusters() {
         defer ticker.Stop()
 
         for range ticker.C {
-                var clusters []kubernetes.Cluster
+                var clusters []Cluster
                 global.DB.Where("auto_scale_enabled = ? AND status = ?", true, "connected").Find(&clusters)
 
                 for _, cluster := range clusters {
@@ -269,9 +428,9 @@ func (s *AutoScaler) MonitorClusters() {
 }
 
 // checkClusterForScaling 检查集群是否需要扩容
-func (s *AutoScaler) checkClusterForScaling(cluster *kubernetes.Cluster) {
+func (s *AutoScaler) checkClusterForScaling(cluster *Cluster) {
         // 获取所有配置了 HPA 的 Deployment
-        var hpaConfigs []kubernetes.HPAConfig
+        var hpaConfigs []HPAConfig
         global.DB.Where("cluster_id = ? AND enabled = ?", cluster.ID, true).Find(&hpaConfigs)
 
         for _, config := range hpaConfigs {
@@ -302,30 +461,30 @@ func (s *AutoScaler) formatMetrics(metrics map[string]float64) string {
 }
 
 // AddCluster 添加集群
-func AddCluster(cluster *kubernetes.Cluster) error {
+func AddCluster(cluster *Cluster) error {
         return global.DB.Create(cluster).Error
 }
 
 // GetClusters 获取集群列表
-func GetClusters() ([]kubernetes.Cluster, error) {
-        var clusters []kubernetes.Cluster
+func GetClusters() ([]Cluster, error) {
+        var clusters []Cluster
         err := global.DB.Find(&clusters).Error
         return clusters, err
 }
 
 // GetCluster 获取集群
-func GetCluster(id uint) (*kubernetes.Cluster, error) {
-        var cluster kubernetes.Cluster
+func GetCluster(id uint) (*Cluster, error) {
+        var cluster Cluster
         err := global.DB.First(&cluster, id).Error
         return &cluster, err
 }
 
 // UpdateCluster 更新集群
-func UpdateCluster(cluster *kubernetes.Cluster) error {
+func UpdateCluster(cluster *Cluster) error {
         return global.DB.Save(cluster).Error
 }
 
 // DeleteCluster 删除集群
 func DeleteCluster(id uint) error {
-        return global.DB.Delete(&kubernetes.Cluster{}, id).Error
+        return global.DB.Delete(&Cluster{}, id).Error
 }

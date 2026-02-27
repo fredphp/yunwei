@@ -10,7 +10,7 @@ import (
         "yunwei/global"
         "yunwei/service/deploy/config"
         "yunwei/service/deploy/planner"
-        "yunwei/service/notify"
+        "yunwei/model/notify"
 )
 
 // ExecutorStatus 执行器状态
@@ -270,8 +270,7 @@ func (e *DeployExecutor) executeSteps(task *DeployTask, steps []TaskStep) {
                 if e.executor != nil {
                         if strings.HasPrefix(step.Command, "upload:") {
                                 // 文件上传
-                                path := strings.TrimPrefix(step.Command, "upload:")
-                                _ = path // 忽略未使用变量
+                                // path := strings.TrimPrefix(step.Command, "upload:")
                                 // 从配置中获取文件内容
                                 output, err = "File uploaded", nil // 简化处理
                         } else {
@@ -402,8 +401,8 @@ func (e *DeployExecutor) Rollback(taskID uint) error {
         // 执行回滚命令
         for _, cmd := range rollbackPlan {
                 // 执行回滚命令
-                _ = cmd // 忽略未使用变量
                 // 这里简化处理
+                _ = cmd // 使用 cmd 避免编译错误
         }
         
         task.Status = StatusFailed

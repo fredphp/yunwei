@@ -297,7 +297,7 @@ const upgradeForm = ref({
 const fetchAgents = async () => {
   loading.value = true
   try {
-    const res = await request.get('/agents')
+    const res = await request.get('/api/v1/agents')
     // agents.value = res.data || []
   } catch (error) {
     console.error('获取Agent列表失败', error)
@@ -324,19 +324,19 @@ const upgradeAgent = async (agent: any) => {
 }
 
 const enableAgent = async (agent: any) => {
-  await request.post(`/agents/${agent.id}/enable`)
+  await request.post(`/api/v1/agents/${agent.id}/enable`)
   ElMessage.success('已启用')
 }
 
 const disableAgent = async (agent: any) => {
-  await request.post(`/agents/${agent.id}/disable`)
+  await request.post(`/api/v1/agents/${agent.id}/disable`)
   ElMessage.success('已禁用')
 }
 
 const deleteAgent = async (agent: any) => {
   try {
     await ElMessageBox.confirm('确定删除该Agent？', '提示', { type: 'warning' })
-    await request.delete(`/agents/${agent.id}`)
+    await request.delete(`/api/v1/agents/${agent.id}`)
     ElMessage.success('删除成功')
   } catch {}
 }
@@ -359,7 +359,7 @@ const batchUpgrade = () => {
 
 const createUpgradeTask = async () => {
   try {
-    await request.post('/agents/upgrades', upgradeForm.value)
+    await request.post('/api/v1/agents/upgrades', upgradeForm.value)
     ElMessage.success('升级任务已创建')
     showUpgradeDialog.value = false
   } catch (error) {
@@ -368,12 +368,12 @@ const createUpgradeTask = async () => {
 }
 
 const cancelUpgrade = async (task: any) => {
-  await request.post(`/agents/upgrades/${task.id}/cancel`)
+  await request.post(`/api/v1/agents/upgrades/${task.id}/cancel`)
   ElMessage.success('已取消')
 }
 
 const rollbackUpgrade = async (task: any) => {
-  await request.post(`/agents/upgrades/${task.id}/rollback`)
+  await request.post(`/api/v1/agents/upgrades/${task.id}/rollback`)
   ElMessage.success('已回滚')
 }
 
@@ -382,17 +382,17 @@ const setAsLatest = async (version: any) => {
 }
 
 const resumeStrategy = async (strategy: any) => {
-  await request.post(`/agents/gray/${strategy.id}/resume`)
+  await request.post(`/api/v1/agents/gray/${strategy.id}/resume`)
   ElMessage.success('已继续')
 }
 
 const pauseStrategy = async (strategy: any) => {
-  await request.post(`/agents/gray/${strategy.id}/pause`)
+  await request.post(`/api/v1/agents/gray/${strategy.id}/pause`)
   ElMessage.success('已暂停')
 }
 
 const cancelStrategy = async (strategy: any) => {
-  await request.post(`/agents/gray/${strategy.id}/cancel`)
+  await request.post(`/api/v1/agents/gray/${strategy.id}/cancel`)
   ElMessage.success('已取消')
 }
 

@@ -205,7 +205,7 @@ const releaseForm = ref({
 const fetchReleases = async () => {
   loading.value = true
   try {
-    const res = await request.get('/canary/releases')
+    const res = await request.get('/api/v1/canary/releases')
     releases.value = res.data || []
   } catch (error) {
     ElMessage.error('获取发布列表失败')
@@ -217,8 +217,8 @@ const fetchReleases = async () => {
 const fetchReleaseDetail = async (id: number) => {
   try {
     const [releaseRes, stepsRes] = await Promise.all([
-      request.get(`/canary/releases/${id}`),
-      request.get(`/canary/releases/${id}/steps`)
+      request.get(`/api/v1/canary/releases/${id}`),
+      request.get(`/api/v1/canary/releases/${id}/steps`)
     ])
     currentRelease.value = releaseRes.data
     releaseSteps.value = stepsRes.data || []
@@ -229,7 +229,7 @@ const fetchReleaseDetail = async (id: number) => {
 
 const startRelease = async () => {
   try {
-    await request.post('/canary/releases', releaseForm.value)
+    await request.post('/api/v1/canary/releases', releaseForm.value)
     ElMessage.success('发布已启动')
     showStartDialog.value = false
     fetchReleases()
@@ -240,7 +240,7 @@ const startRelease = async () => {
 
 const promoteRelease = async (release: any) => {
   try {
-    await request.post(`/canary/releases/${release.id}/promote`)
+    await request.post(`/api/v1/canary/releases/${release.id}/promote`)
     ElMessage.success('发布已推进')
     fetchReleases()
     if (currentRelease.value?.id === release.id) {
@@ -254,7 +254,7 @@ const promoteRelease = async (release: any) => {
 const completeRelease = async (release: any) => {
   try {
     await ElMessageBox.confirm('确定要完成发布吗？这将把新版本设为正式版本。', '确认')
-    await request.post(`/canary/releases/${release.id}/complete`)
+    await request.post(`/api/v1/canary/releases/${release.id}/complete`)
     ElMessage.success('发布已完成')
     fetchReleases()
   } catch (error) {
@@ -264,7 +264,7 @@ const completeRelease = async (release: any) => {
 
 const pauseRelease = async (release: any) => {
   try {
-    await request.post(`/canary/releases/${release.id}/pause`)
+    await request.post(`/api/v1/canary/releases/${release.id}/pause`)
     ElMessage.success('发布已暂停')
     fetchReleases()
   } catch (error) {
@@ -275,7 +275,7 @@ const pauseRelease = async (release: any) => {
 const rollbackRelease = async (release: any) => {
   try {
     await ElMessageBox.confirm('确定要回滚吗？', '确认', { type: 'warning' })
-    await request.post(`/canary/releases/${release.id}/rollback`, { reason: '用户手动回滚' })
+    await request.post(`/api/v1/canary/releases/${release.id}/rollback`, { reason: '用户手动回滚' })
     ElMessage.warning('发布已回滚')
     fetchReleases()
   } catch (error) {

@@ -185,7 +185,8 @@ func (o *Optimizer) ExecuteAction(action *AutoAction, executor CommandExecutor) 
 
         output, err := executor.Execute(action.Command)
 
-        action.CompletedAt = timePtr(time.Now())
+        completedAt := timePtr(time.Now())
+        action.CompletedAt = completedAt
         action.Duration = action.CompletedAt.Sub(*action.ExecutedAt).Milliseconds()
 
         if err != nil {

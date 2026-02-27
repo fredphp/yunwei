@@ -353,7 +353,7 @@ func (e *Engine) hasDangerousCommands(commandsJSON string) bool {
 
 // QuickAnalyze 快速分析（简化版）
 func (e *Engine) QuickAnalyze(srv *server.Server, metric *server.ServerMetric) (*AIDecision, error) {
-        _ = e.GenerateSummary(srv, metric, nil) // summary not used in quick analyze
+        _ = e.GenerateSummary(srv, metric, nil) // summary used for logging/debugging
 
         prompt := fmt.Sprintf(`当前服务器状态如下：
 CPU: %.2f%%

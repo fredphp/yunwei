@@ -2,10 +2,10 @@ package scheduler
 
 import (
         "time"
+
         "yunwei/global"
         "yunwei/model/common/response"
         "yunwei/service/scheduler"
-        "yunwei/service/scheduler/cron"
 
         "github.com/gin-gonic/gin"
 )
@@ -138,7 +138,7 @@ func CancelTask(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(c)
 }
 
 // RetryTask 重试任务
@@ -148,7 +148,7 @@ func RetryTask(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(c)
 }
 
 // RollbackTask 回滚任务
@@ -158,7 +158,7 @@ func RollbackTask(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(c)
 }
 
 // GetTaskExecutions 获取执行历史
@@ -182,24 +182,18 @@ func SubmitBatch(c *gin.Context) {
                 Parallelism int             `json:"parallelism"`
                 StopOnFail  bool            `json:"stopOnFail"`
         }
-
+        
         if err := c.ShouldBindJSON(&req); err != nil {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-
-        // 转换 []Task 为 []*Task
-        taskPtrs := make([]*scheduler.Task, len(req.Tasks))
-        for i := range req.Tasks {
-                taskPtrs[i] = &req.Tasks[i]
-        }
-
-        batch, err := jobCenter.SubmitBatch(req.Name, taskPtrs, req.Parallelism, req.StopOnFail)
+        
+        batch, err := jobCenter.SubmitBatch(req.Name, req.Tasks, req.Parallelism, req.StopOnFail)
         if err != nil {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-
+        
         response.OkWithData(batch, c)
 }
 
@@ -254,7 +248,7 @@ func CreateCronJob(c *gin.Context) {
 // GetCronJob 获取定时任务
 func GetCronJob(c *gin.Context) {
         id := c.Param("id")
-        job, err := cron.GetCronJob(parseInt(id))
+        job, err := scheduler.GetCronJob(parseInt(id))
         if err != nil {
                 response.FailWithMessage("定时任务不存在", c)
                 return
@@ -264,8 +258,11 @@ func GetCronJob(c *gin.Context) {
 
 // ListCronJobs 列出定时任务
 func ListCronJobs(c *gin.Context) {
-        var jobs []scheduler.CronJob
-        global.DB.Order("created_at DESC").Find(&jobs)
+        jobs, err := scheduler.GetCronJobs()
+        if err != nil {
+                response.FailWithMessage(err.Error(), c)
+                return
+        }
         response.OkWithData(jobs, c)
 }
 
@@ -292,7 +289,7 @@ func DeleteCronJob(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(c)
 }
 
 // TriggerCronJob 手动触发定时任务
@@ -302,13 +299,13 @@ func TriggerCronJob(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(c)
 }
 
 // GetCronExecutions 获取执行历史
 func GetCronExecutions(c *gin.Context) {
         id := c.Param("id")
-        executions, err := cron.GetCronExecutions(parseInt(id), 20)
+        executions, err := scheduler.GetCronExecutions(parseInt(id), 20)
         if err != nil {
                 response.FailWithMessage(err.Error(), c)
                 return
@@ -380,7 +377,7 @@ func ScaleWorkers(c *gin.Context) {
                 return
         }
         
-        response.Ok(nil, c)
+        response.Ok(c)
 }
 
 // ==================== 模板管理 ====================
@@ -453,11 +450,25 @@ func GetDashboard(c *gin.Context) {
         global.DB.Model(&scheduler.Task{}).Where("status = ? AND DATE(created_at) = ?", scheduler.TaskStatusSuccess, today).Count(&todaySuccess)
         global.DB.Model(&scheduler.Task{}).Where("status = ? AND DATE(created_at) = ?", scheduler.TaskStatusFailed, today).Count(&todayFailed)
         
-        // 队列统计
-        queueStats, _ := jobCenter.GetAllQueueStats()
+        // 队列统计 - 添加 nil 检查
+        var queueStats map[string]interface{}
+        if jobCenter != nil {
+                stats, _ := jobCenter.GetAllQueueStats()
+                queueStats = make(map[string]interface{})
+                for k, v := range stats {
+                        queueStats[k] = v
+                }
+        }
         
-        // Worker 统计
-        workerStats := jobCenter.GetAllWorkerStats()
+        // Worker 统计 - 添加 nil 检查
+        var workerStats map[string]interface{}
+        if jobCenter != nil {
+                stats := jobCenter.GetAllWorkerStats()
+                workerStats = make(map[string]interface{})
+                for k, v := range stats {
+                        workerStats[k] = v
+                }
+        }
         
         response.OkWithData(gin.H{
                 "taskStats": gin.H{

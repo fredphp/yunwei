@@ -384,7 +384,7 @@ const initCharts = () => {
 
 const fetchCostData = async () => {
   try {
-    const res = await request.get('/cost/overview')
+    const res = await request.get('/api/v1/cost/overview')
     // 更新数据
   } catch (error) {
     console.error('获取成本数据失败', error)
@@ -418,7 +418,7 @@ const saveBudget = async () => {
 
 const saveAccount = async () => {
   try {
-    await request.post('/cost/accounts', accountForm.value)
+    await request.post('/api/v1/cost/accounts', accountForm.value)
     ElMessage.success('账户添加成功')
     showAccountDialog.value = false
   } catch (error) {
@@ -428,7 +428,7 @@ const saveAccount = async () => {
 
 const syncAccount = async (account: any) => {
   try {
-    await request.post(`/cost/accounts/${account.id}/sync`)
+    await request.post(`/api/v1/cost/accounts/${account.id}/sync`)
     ElMessage.success('同步成功')
   } catch (error) {
     ElMessage.error('同步失败')

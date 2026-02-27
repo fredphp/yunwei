@@ -55,13 +55,11 @@ func SetTenantContext(c *gin.Context, tc *TenantContext) {
 func (s *IsolationService) TenantMiddleware() gin.HandlerFunc {
         return func(c *gin.Context) {
                 var tenant *tenantModel.Tenant
-                var err error
 
                 // 1. 优先从请求头获取租户ID
                 tenantID := c.GetHeader("X-Tenant-ID")
                 if tenantID != "" {
                         tenant, _ = s.getTenantByID(tenantID)
-                        _ = err // 忽略错误
                 }
 
                 // 2. 从子域名获取租户

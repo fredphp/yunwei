@@ -405,7 +405,7 @@ const workerStats = computed(() => {
 
 const fetchDashboard = async () => {
   try {
-    const res = await request.get('/scheduler/dashboard')
+    const res = await request.get('/api/v1/scheduler/dashboard')
     dashboard.value = res.data || {}
   } catch (error) {
     console.error('获取仪表盘失败', error)
@@ -415,7 +415,7 @@ const fetchDashboard = async () => {
 const fetchTasks = async () => {
   loading.value = true
   try {
-    const res = await request.get('/scheduler/tasks')
+    const res = await request.get('/api/v1/scheduler/tasks')
     tasks.value = res.data?.list || []
   } catch (error) {
     console.error('获取任务列表失败', error)
@@ -427,7 +427,7 @@ const fetchTasks = async () => {
 const fetchBatches = async () => {
   batchesLoading.value = true
   try {
-    const res = await request.get('/scheduler/batches')
+    const res = await request.get('/api/v1/scheduler/batches')
     batches.value = res.data || []
   } catch (error) {
     console.error('获取批次列表失败', error)
@@ -439,7 +439,7 @@ const fetchBatches = async () => {
 const fetchCronJobs = async () => {
   cronLoading.value = true
   try {
-    const res = await request.get('/scheduler/cron')
+    const res = await request.get('/api/v1/scheduler/cron')
     cronJobs.value = res.data || []
   } catch (error) {
     console.error('获取定时任务失败', error)
@@ -451,7 +451,7 @@ const fetchCronJobs = async () => {
 const submitTask = async () => {
   submitting.value = true
   try {
-    await request.post('/scheduler/tasks/options', taskForm.value)
+    await request.post('/api/v1/scheduler/tasks/options', taskForm.value)
     ElMessage.success('任务已提交')
     showSubmitDialog.value = false
     fetchTasks()
@@ -466,7 +466,7 @@ const submitTask = async () => {
 const submitBatch = async () => {
   submitting.value = true
   try {
-    await request.post('/scheduler/batches', batchForm.value)
+    await request.post('/api/v1/scheduler/batches', batchForm.value)
     ElMessage.success('批量任务已提交')
     showBatchDialog.value = false
     fetchBatches()
@@ -484,7 +484,7 @@ const viewTask = async (row: any) => {
   
   // 获取执行历史
   try {
-    const res = await request.get(`/scheduler/tasks/${row.id}/executions`)
+    const res = await request.get(`/api/v1/scheduler/tasks/${row.id}/executions`)
     taskExecutions.value = res.data || []
   } catch (error) {
     console.error('获取执行历史失败', error)
@@ -498,7 +498,7 @@ const viewBatch = async (id: number) => {
 
 const cancelTask = async (id: number) => {
   try {
-    await request.post(`/scheduler/tasks/${id}/cancel`)
+    await request.post(`/api/v1/scheduler/tasks/${id}/cancel`)
     ElMessage.success('任务已取消')
     fetchTasks()
   } catch (error) {
@@ -508,7 +508,7 @@ const cancelTask = async (id: number) => {
 
 const retryTask = async (id: number) => {
   try {
-    await request.post(`/scheduler/tasks/${id}/retry`)
+    await request.post(`/api/v1/scheduler/tasks/${id}/retry`)
     ElMessage.success('任务已重试')
     fetchTasks()
   } catch (error) {
@@ -518,7 +518,7 @@ const retryTask = async (id: number) => {
 
 const rollbackTask = async (id: number) => {
   try {
-    await request.post(`/scheduler/tasks/${id}/rollback`)
+    await request.post(`/api/v1/scheduler/tasks/${id}/rollback`)
     ElMessage.warning('任务已回滚')
     fetchTasks()
   } catch (error) {
@@ -528,7 +528,7 @@ const rollbackTask = async (id: number) => {
 
 const triggerCron = async (id: number) => {
   try {
-    await request.post(`/scheduler/cron/${id}/trigger`)
+    await request.post(`/api/v1/scheduler/cron/${id}/trigger`)
     ElMessage.success('已触发执行')
   } catch (error) {
     ElMessage.error('触发失败')
@@ -537,7 +537,7 @@ const triggerCron = async (id: number) => {
 
 const toggleCron = async (job: any) => {
   try {
-    await request.put(`/scheduler/cron/${job.id}`, job)
+    await request.put(`/api/v1/scheduler/cron/${job.id}`, job)
     ElMessage.success(job.enabled ? '已启用' : '已禁用')
   } catch (error) {
     ElMessage.error('操作失败')

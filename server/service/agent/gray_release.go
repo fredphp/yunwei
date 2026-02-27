@@ -51,8 +51,7 @@ func (e *GrayReleaseEngine) CreateStrategy(req *CreateStrategyRequest) (*agent.G
                 VersionID:        req.VersionID,
                 VersionName:      version.Version,
                 StrategyType:     req.StrategyType,
-                InitialWeight:    req.WeightPercent,
-                TargetWeight:     100,
+                WeightPercent:    req.WeightPercent,
                 StepSize:         req.StepSize,
                 StepInterval:     req.StepInterval,
                 GroupList:        req.GroupList,
@@ -240,7 +239,7 @@ func (e *GrayReleaseEngine) executeWeightStrategy(ctx *GrayReleaseContext) {
         totalAgents := len(agents)
 
         // 计算初始灰度数量
-        initialCount := totalAgents * strategy.InitialWeight / 100
+        initialCount := totalAgents * strategy.WeightPercent / 100
         if initialCount == 0 {
                 initialCount = 1
         }
@@ -283,7 +282,7 @@ func (e *GrayReleaseEngine) executeWeightStrategy(ctx *GrayReleaseContext) {
                 }
 
                 // 计算下一批
-                currentPercent := strategy.InitialWeight + strategy.StepSize*(strategy.CurrentStep+1)
+                currentPercent := strategy.WeightPercent + strategy.StepSize*(strategy.CurrentStep+1)
                 if currentPercent > 100 {
                         currentPercent = 100
                 }
@@ -510,6 +509,7 @@ func (e *GrayReleaseEngine) GetStrategyProgress(id uint) (*StrategyProgress, err
 
         // 预估剩余时间
         if strategy.StrategyType == "weight" && strategy.Status == "running" {
+                _ = strategy.TotalAgents - strategy.UpgradedAgents // remainingAgents calculation
                 remainingSteps := (100 - int(progress.CurrentPercent)) / strategy.StepSize
                 progress.EstimatedTime = remainingSteps * strategy.StepInterval
         }

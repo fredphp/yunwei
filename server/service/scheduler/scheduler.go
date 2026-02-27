@@ -6,9 +6,7 @@ import (
         "time"
 
         "yunwei/global"
-        "yunwei/service/patrol"
-        "yunwei/service/prediction"
-        "yunwei/service/selfheal"
+        "yunwei/model/patrol"
 )
 
 // JobStatus 任务状态
@@ -78,15 +76,31 @@ func (JobLog) TableName() string {
         return "scheduler_job_logs"
 }
 
+// PatrolRobotInterface 巡检机器人接口
+type PatrolRobotInterface interface {
+        RunPatrol(patrolType patrol.PatrolType) (*patrol.PatrolRecord, error)
+        GenerateDailyReport() (*patrol.DailyReport, error)
+}
+
+// HealerInterface 自愈系统接口
+type HealerInterface interface {
+        Heal() error
+}
+
+// PredictorInterface 预测器接口
+type PredictorInterface interface {
+        Predict() error
+}
+
 // Scheduler 调度器
 type Scheduler struct {
-        jobs         map[uint]*Job
-        tickers      map[uint]*time.Ticker
-        running      bool
-        mu           sync.RWMutex
-        patrolRobot  *patrol.PatrolRobot
-        healer       *selfheal.SelfHealer
-        predictor    *prediction.Predictor
+        jobs      map[uint]*Job
+        tickers   map[uint]*time.Ticker
+        running   bool
+        mu        sync.RWMutex
+        patrolBot PatrolRobotInterface
+        healer    HealerInterface
+        predictor PredictorInterface
 }
 
 // NewScheduler 创建调度器
@@ -98,17 +112,17 @@ func NewScheduler() *Scheduler {
 }
 
 // SetPatrolRobot 设置巡检机器人
-func (s *Scheduler) SetPatrolRobot(robot *patrol.PatrolRobot) {
-        s.patrolRobot = robot
+func (s *Scheduler) SetPatrolRobot(robot PatrolRobotInterface) {
+        s.patrolBot = robot
 }
 
 // SetHealer 设置自愈系统
-func (s *Scheduler) SetHealer(healer *selfheal.SelfHealer) {
+func (s *Scheduler) SetHealer(healer HealerInterface) {
         s.healer = healer
 }
 
 // SetPredictor 设置预测器
-func (s *Scheduler) SetPredictor(predictor *prediction.Predictor) {
+func (s *Scheduler) SetPredictor(predictor PredictorInterface) {
         s.predictor = predictor
 }
 
@@ -246,10 +260,10 @@ func (s *Scheduler) executeJob(job *Job) {
 
 // executePatrol 执行巡检
 func (s *Scheduler) executePatrol(job *Job) (string, error) {
-        if s.patrolRobot == nil {
+        if s.patrolBot == nil {
                 return "", fmt.Errorf("巡检机器人未配置")
         }
-        record, err := s.patrolRobot.RunPatrol(patrol.PatrolTypeDaily)
+        record, err := s.patrolBot.RunPatrol(patrol.PatrolTypeManual)
         if err != nil {
                 return "", err
         }
@@ -258,10 +272,10 @@ func (s *Scheduler) executePatrol(job *Job) (string, error) {
 
 // executeReport 执行报告
 func (s *Scheduler) executeReport(job *Job) (string, error) {
-        if s.patrolRobot == nil {
+        if s.patrolBot == nil {
                 return "", fmt.Errorf("巡检机器人未配置")
         }
-        report, err := s.patrolRobot.GenerateDailyReport()
+        report, err := s.patrolBot.GenerateDailyReport()
         if err != nil {
                 return "", err
         }
@@ -294,4 +308,31 @@ func (s *Scheduler) GetJobs() ([]Job, error) {
         var jobs []Job
         err := global.DB.Find(&jobs).Error
         return jobs, err
+}
+
+// UpdateTask 更新任务
+func UpdateTask(task *Task) error {
+        return global.DB.Save(task).Error
+}
+
+// DeleteTask 删除任务
+func DeleteTask(id uint) error {
+        return global.DB.Delete(&Task{}, id).Error
+}
+
+// ListTasks 列出任务
+func ListTasks(queueName string, status TaskStatus, limit int) ([]Task, error) {
+        var tasks []Task
+        query := global.DB.Model(&Task{})
+        if queueName != "" {
+                query = query.Where("queue_name = ?", queueName)
+        }
+        if status != "" {
+                query = query.Where("status = ?", status)
+        }
+        if limit > 0 {
+                query = query.Limit(limit)
+        }
+        err := query.Order("created_at DESC").Find(&tasks).Error
+        return tasks, err
 }

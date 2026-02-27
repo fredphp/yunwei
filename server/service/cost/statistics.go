@@ -9,13 +9,31 @@ import (
         "strings"
         "sync"
         "time"
-
-        "yunwei/model/cost"
 )
 
 // StatisticsService 成本统计服务
 type StatisticsService struct {
         mu sync.RWMutex
+}
+
+// StatsCostRecord 成本记录（用于统计）
+type StatsCostRecord struct {
+        ID           uint
+        RecordDate   time.Time
+        Provider     string
+        ResourceType string
+        ResourceID   string
+        ResourceName string
+        Region       string
+        NetCost      float64
+        UsageAmount  float64
+        UsageUnit    string
+        ProjectID    string
+        ProjectName  string
+        Department   string
+        Owner        string
+        Tags         string
+        Environment  string
 }
 
 // NewStatisticsService 创建成本统计服务
@@ -182,8 +200,8 @@ func (s *StatisticsService) GetCostStatistics(ctx context.Context, query CostQue
 }
 
 // generateMockRecords 生成模拟数据
-func (s *StatisticsService) generateMockRecords(query CostQuery) []cost.CostRecord {
-        records := make([]cost.CostRecord, 0)
+func (s *StatisticsService) generateMockRecords(query CostQuery) []StatsCostRecord {
+        records := make([]StatsCostRecord, 0)
 
         providers := []string{"aws", "aliyun", "tencent"}
         if len(query.Providers) > 0 {
@@ -201,7 +219,7 @@ func (s *StatisticsService) generateMockRecords(query CostQuery) []cost.CostReco
                 for _, provider := range providers {
                         for i, rt := range resourceTypes {
                                 for _, region := range regions {
-                                        records = append(records, cost.CostRecord{
+                                        records = append(records, StatsCostRecord{
                                                 RecordDate:   d,
                                                 Provider:     provider,
                                                 ResourceType: rt,
@@ -221,7 +239,7 @@ func (s *StatisticsService) generateMockRecords(query CostQuery) []cost.CostReco
 }
 
 // groupByDay 按日期分组
-func (s *StatisticsService) groupByDay(records []cost.CostRecord, start, end time.Time) []DailyCost {
+func (s *StatisticsService) groupByDay(records []StatsCostRecord, start, end time.Time) []DailyCost {
         dayMap := make(map[string]*DailyCost)
 
         // 初始化所有日期
@@ -255,7 +273,7 @@ func (s *StatisticsService) groupByDay(records []cost.CostRecord, start, end tim
 }
 
 // groupByField 按字段分组
-func (s *StatisticsService) groupByField(records []cost.CostRecord, field string, totalCost float64) []GroupedCost {
+func (s *StatisticsService) groupByField(records []StatsCostRecord, field string, totalCost float64) []GroupedCost {
         groupMap := make(map[string]*GroupedCost)
 
         for _, r := range records {
@@ -316,7 +334,7 @@ func (s *StatisticsService) groupByField(records []cost.CostRecord, field string
 }
 
 // getTopResources 获取成本最高的资源
-func (s *StatisticsService) getTopResources(records []cost.CostRecord, totalCost float64, limit int) []ResourceCost {
+func (s *StatisticsService) getTopResources(records []StatsCostRecord, totalCost float64, limit int) []ResourceCost {
         resourceMap := make(map[string]*ResourceCost)
 
         for _, r := range records {
@@ -374,13 +392,13 @@ func (s *StatisticsService) GetCostTrend(ctx context.Context, query CostQuery, g
 }
 
 // groupByHour 按小时分组
-func (s *StatisticsService) groupByHour(records []cost.CostRecord) []DailyCost {
+func (s *StatisticsService) groupByHour(records []StatsCostRecord) []DailyCost {
         // 简化实现
         return make([]DailyCost, 0)
 }
 
 // groupByWeek 按周分组
-func (s *StatisticsService) groupByWeek(records []cost.CostRecord, start, end time.Time) []DailyCost {
+func (s *StatisticsService) groupByWeek(records []StatsCostRecord, start, end time.Time) []DailyCost {
         weekMap := make(map[int]*DailyCost)
 
         for _, r := range records {
@@ -408,7 +426,7 @@ func (s *StatisticsService) groupByWeek(records []cost.CostRecord, start, end ti
 }
 
 // groupByMonth 按月分组
-func (s *StatisticsService) groupByMonth(records []cost.CostRecord, start, end time.Time) []DailyCost {
+func (s *StatisticsService) groupByMonth(records []StatsCostRecord, start, end time.Time) []DailyCost {
         monthMap := make(map[string]*DailyCost)
 
         for _, r := range records {
@@ -558,7 +576,7 @@ func (s *StatisticsService) GetCostEfficiency(ctx context.Context, query CostQue
         records := s.generateMockRecords(query)
 
         efficiency := &CostEfficiency{
-                ByResourceType: make([]ResourceEfficiencySummary, 0),
+                ByResourceType: make([]ResourceUsage, 0),
         }
 
         var totalCost, usedCost float64
@@ -583,17 +601,17 @@ func (s *StatisticsService) GetCostEfficiency(ctx context.Context, query CostQue
 
 // CostEfficiency 成本效率
 type CostEfficiency struct {
-        OverallEfficiency float64                     `json:"overall_efficiency"`
-        TotalCost         float64                     `json:"total_cost"`
-        UsedCost          float64                     `json:"used_cost"`
-        WastedCost        float64                     `json:"wasted_cost"`
-        ByResourceType    []ResourceEfficiencySummary `json:"by_resource_type"`
+        OverallEfficiency float64              `json:"overall_efficiency"`
+        TotalCost         float64              `json:"total_cost"`
+        UsedCost          float64              `json:"used_cost"`
+        WastedCost        float64              `json:"wasted_cost"`
+        ByResourceType    []ResourceUsage      `json:"by_resource_type"`
 }
 
-// ResourceEfficiencySummary 资源效率摘要
-type ResourceEfficiencySummary struct {
+// ResourceUsage 资源使用情况
+type ResourceUsage struct {
         ResourceType string  `json:"resource_type"`
-        Efficiency   float64 `json:"efficiency"`
+        Usage        float64 `json:"usage"`
         Cost         float64 `json:"cost"`
         WastedCost   float64 `json:"wasted_cost"`
 }

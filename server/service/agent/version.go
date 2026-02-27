@@ -479,8 +479,8 @@ type ImportResult struct {
         Error   string `json:"error"`
 }
 
-// ToJSON 转换为JSON
-func ToJSON(v *agent.AgentVersion) string {
+// VersionToJSON 转换为JSON
+func VersionToJSON(v *agent.AgentVersion) string {
         data, _ := json.Marshal(v)
         return string(data)
 }

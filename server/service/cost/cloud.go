@@ -4,8 +4,6 @@ import (
         "context"
         "sync"
         "time"
-
-        "yunwei/model/cost"
 )
 
 // CloudCostService 云成本分析服务
@@ -18,13 +16,6 @@ func NewCloudCostService() *CloudCostService {
         return &CloudCostService{}
 }
 
-// TrendPoint 趋势点
-type TrendPoint struct {
-        Date  string  `json:"date"`
-        Cost  float64 `json:"cost"`
-        Label string  `json:"label"`
-}
-
 // CloudCostSummary 云成本摘要
 type CloudCostSummary struct {
         Provider       string             `json:"provider"`
@@ -35,8 +26,15 @@ type CloudCostSummary struct {
         ByService      map[string]float64 `json:"by_service"`
         ByInstanceType map[string]float64 `json:"by_instance_type"`
         TopResources   []CloudResource    `json:"top_resources"`
-        Trend          []TrendPoint       `json:"trend"`
+        Trend          []CostTrendPoint   `json:"trend"`
         Savings        CloudSavings       `json:"savings"`
+}
+
+// CostTrendPoint 成本趋势点
+type CostTrendPoint struct {
+        Date  string  `json:"date"`
+        Cost  float64 `json:"cost"`
+        Label string  `json:"label,omitempty"`
 }
 
 // CloudResource 云资源
@@ -68,7 +66,7 @@ func (s *CloudCostService) AnalyzeAliyunCost(ctx context.Context, accountID stri
                 ByService:      make(map[string]float64),
                 ByInstanceType: make(map[string]float64),
                 TopResources:   make([]CloudResource, 0),
-                Trend:          make([]TrendPoint, 0),
+                Trend:          make([]CostTrendPoint, 0),
         }
 
         // 模拟数据
@@ -112,7 +110,7 @@ func (s *CloudCostService) AnalyzeAliyunCost(ctx context.Context, accountID stri
         // 趋势
         for i := 0; i < 7; i++ {
                 d := startTime.AddDate(0, 0, i)
-                summary.Trend = append(summary.Trend, TrendPoint{
+                summary.Trend = append(summary.Trend, CostTrendPoint{
                         Date:  d.Format("2006-01-02"),
                         Cost:  800 + float64(i)*50,
                         Label: d.Format("01-02"),
@@ -141,7 +139,7 @@ func (s *CloudCostService) AnalyzeAWSCost(ctx context.Context, accountID string,
                 ByService:      make(map[string]float64),
                 ByInstanceType: make(map[string]float64),
                 TopResources:   make([]CloudResource, 0),
-                Trend:          make([]TrendPoint, 0),
+                Trend:          make([]CostTrendPoint, 0),
         }
 
         summary.TotalCost = 15000
@@ -391,17 +389,28 @@ type SyncResult struct {
 }
 
 // CreateCostRecord 创建成本记录
-func (s *CloudCostService) CreateCostRecord(ctx context.Context, record *cost.CostRecord) error {
+func (s *CloudCostService) CreateCostRecord(ctx context.Context, provider string, record *CostRecord) error {
         // 实际应保存到数据库
         return nil
 }
 
+// CostRecord 成本记录
+ type CostRecord struct {
+        ID           uint      `json:"id"`
+        Provider     string    `json:"provider"`
+        ResourceType string    `json:"resource_type"`
+        ResourceID   string    `json:"resource_id"`
+        ResourceName string    `json:"resource_name"`
+        NetCost      float64   `json:"net_cost"`
+        RecordDate   time.Time `json:"record_date"`
+}
+
 // GetCostRecords 获取成本记录
-func (s *CloudCostService) GetCostRecords(ctx context.Context, provider string, startTime, endTime time.Time) ([]cost.CostRecord, error) {
-        records := make([]cost.CostRecord, 0)
+func (s *CloudCostService) GetCostRecords(ctx context.Context, provider string, startTime, endTime time.Time) ([]CostRecord, error) {
+        records := make([]CostRecord, 0)
 
         // 模拟数据
-        records = []cost.CostRecord{
+        records = []CostRecord{
                 {
                         Provider:     provider,
                         ResourceType: "ecs",

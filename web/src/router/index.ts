@@ -19,34 +19,50 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '仪表盘', icon: 'Odometer' }
       },
-      // 服务器管理
       {
-        path: 'servers/list',
-        name: 'ServerList',
+        path: 'system',
+        name: 'System',
+        redirect: '/system/user',
+        meta: { title: '系统管理', icon: 'Setting' },
+        children: [
+          {
+            path: 'user',
+            name: 'User',
+            component: () => import('@/views/system/user/index.vue'),
+            meta: { title: '用户管理', icon: 'User' }
+          },
+          {
+            path: 'role',
+            name: 'Role',
+            component: () => import('@/views/system/role/index.vue'),
+            meta: { title: '角色管理', icon: 'UserFilled' }
+          },
+          {
+            path: 'menu',
+            name: 'Menu',
+            component: () => import('@/views/system/menu/index.vue'),
+            meta: { title: '菜单管理', icon: 'Menu' }
+          }
+        ]
+      },
+      {
+        path: 'servers',
+        name: 'Servers',
         component: () => import('@/views/servers/index.vue'),
-        meta: { title: '服务器列表', icon: 'Monitor' }
+        meta: { title: '服务器管理', icon: 'Monitor' }
       },
-      {
-        path: 'servers/alerts',
-        name: 'ServerAlerts',
-        component: () => import('@/views/alerts/index.vue'),
-        meta: { title: '告警管理', icon: 'Bell' }
-      },
-      // 告警中心（独立一级菜单）
       {
         path: 'alerts',
         name: 'Alerts',
         component: () => import('@/views/alerts/index.vue'),
-        meta: { title: '告警中心', icon: 'Bell' }
+        meta: { title: '告警管理', icon: 'Bell' }
       },
-      // Kubernetes
       {
-        path: 'kubernetes/clusters',
-        name: 'Clusters',
+        path: 'kubernetes',
+        name: 'Kubernetes',
         component: () => import('@/views/kubernetes/index.vue'),
-        meta: { title: '集群管理', icon: 'Grid' }
+        meta: { title: 'K8s 扩容', icon: 'Grid' }
       },
-      // 其他功能模块
       {
         path: 'canary',
         name: 'Canary',
@@ -90,16 +106,16 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Agent 管理', icon: 'Cpu' }
       },
       {
+        path: 'backup',
+        name: 'Backup',
+        component: () => import('@/views/backup/index.vue'),
+        meta: { title: '备份管理', icon: 'FolderOpened' }
+      },
+      {
         path: 'ha',
         name: 'HA',
         component: () => import('@/views/ha/index.vue'),
         meta: { title: '高可用', icon: 'Connection' }
-      },
-      {
-        path: 'backup',
-        name: 'Backup',
-        component: () => import('@/views/backup/index.vue'),
-        meta: { title: '灾备备份', icon: 'FolderOpened' }
       },
       {
         path: 'cost',
@@ -107,55 +123,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/cost/index.vue'),
         meta: { title: '成本控制', icon: 'Wallet' }
       },
-      // 系统管理
-      {
-        path: 'system/user',
-        name: 'UserManage',
-        component: () => import('@/views/system/user/index.vue'),
-        meta: { title: '用户管理', icon: 'User' }
-      },
-      {
-        path: 'system/role',
-        name: 'RoleManage',
-        component: () => import('@/views/system/role/index.vue'),
-        meta: { title: '角色管理', icon: 'UserFilled' }
-      },
-      {
-        path: 'system/menu',
-        name: 'MenuManage',
-        component: () => import('@/views/system/menu/index.vue'),
-        meta: { title: '菜单管理', icon: 'Menu' }
-      },
-      // 租户管理
       {
         path: 'tenant',
         name: 'Tenant',
-        redirect: '/tenant/list',
+        component: () => import('@/views/tenant/index.vue'),
         meta: { title: '租户管理', icon: 'OfficeBuilding' }
-      },
-      {
-        path: 'tenant/list',
-        name: 'TenantList',
-        component: () => import('@/views/tenant/list/index.vue'),
-        meta: { title: '租户列表', icon: 'List' }
-      },
-      {
-        path: 'tenant/plan',
-        name: 'TenantPlan',
-        component: () => import('@/views/tenant/plan/index.vue'),
-        meta: { title: '套餐管理', icon: 'PriceTag' }
-      },
-      {
-        path: 'tenant/billing',
-        name: 'TenantBilling',
-        component: () => import('@/views/tenant/billing/index.vue'),
-        meta: { title: '账单管理', icon: 'Wallet' }
-      },
-      {
-        path: 'tenant/audit',
-        name: 'TenantAudit',
-        component: () => import('@/views/tenant/audit/index.vue'),
-        meta: { title: '审计日志', icon: 'Document' }
       },
       {
         path: 'profile',

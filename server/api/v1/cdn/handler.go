@@ -69,7 +69,7 @@ func DeleteDomain(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(gin.H{}, c)
+        response.Ok(nil, c)
 }
 
 // OptimizeCDN 优化 CDN
@@ -105,7 +105,7 @@ func PurgeCache(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(gin.H{}, c)
+        response.Ok(nil, c)
 }
 
 // PreheatCache 预热缓存
@@ -124,7 +124,7 @@ func PreheatCache(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(gin.H{}, c)
+        response.Ok(nil, c)
 }
 
 // GetNodeStatus 获取节点状态
@@ -185,7 +185,7 @@ func DeleteCacheRule(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(gin.H{}, c)
+        response.Ok(nil, c)
 }
 
 // GetOptimizationHistory 获取优化历史

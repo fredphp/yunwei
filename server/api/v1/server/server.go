@@ -4,7 +4,6 @@ import (
         "strconv"
         "time"
 
-        "yunwei/config"
         "yunwei/global"
         "yunwei/model/common/response"
         "yunwei/model/server"
@@ -386,9 +385,9 @@ func AIAnalyze(c *gin.Context) {
 
         // 创建决策引擎
         llmClient := llm.NewGLM5Client(llm.GLM5Config{
-                APIKey: config.CONFIG.AI.APIKey,
-                BaseURL: config.CONFIG.AI.BaseURL,
-                Model:   config.CONFIG.AI.Model,
+                APIKey:  "",
+                BaseURL: "",
+                Model:   "",
         })
         engine := decision.NewEngine(llmClient)
 

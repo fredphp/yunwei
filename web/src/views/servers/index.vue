@@ -314,13 +314,11 @@ const filteredServers = computed(() => {
 const fetchServers = async () => {
   loading.value = true
   try {
-    const res = await request.get('/servers', {
+    const res = await request.get('/api/v1/servers', {
       params: { page: currentPage.value, pageSize: pageSize.value }
     })
-    // 后端 OkWithPage 返回: { code: 0, data: { list: [], total: 10, page: 1, pageSize: 10 }, msg: "" }
-    const data = res.data || {}
-    servers.value = data.list || []
-    total.value = data.total || 0
+    servers.value = res.data || []
+    total.value = res.total || 0
     
     // 计算统计
     stats.value.total = total.value
@@ -328,7 +326,7 @@ const fetchServers = async () => {
     stats.value.offline = servers.value.filter((s: any) => s.status === 'offline').length
     stats.value.warning = servers.value.filter((s: any) => s.cpuUsage > 80 || s.memUsage > 80).length
   } catch (error) {
-    console.error('获取服务器列表失败', error)
+    ElMessage.error('获取服务器列表失败')
   } finally {
     loading.value = false
   }
@@ -336,7 +334,7 @@ const fetchServers = async () => {
 
 const fetchGroups = async () => {
   try {
-    const res = await request.get('/groups')
+    const res = await request.get('/api/v1/groups')
     groups.value = res.data || []
   } catch (error) {
     console.error('获取分组失败', error)
@@ -346,10 +344,10 @@ const fetchGroups = async () => {
 const saveServer = async () => {
   try {
     if (editingServer.value) {
-      await request.put(`/servers/${editingServer.value.id}`, serverForm.value)
+      await request.put(`/api/v1/servers/${editingServer.value.id}`, serverForm.value)
       ElMessage.success('更新成功')
     } else {
-      await request.post('/servers', serverForm.value)
+      await request.post('/api/v1/servers', serverForm.value)
       ElMessage.success('添加成功')
     }
     showAddDialog.value = false
@@ -369,7 +367,7 @@ const editServer = (server: any) => {
 const deleteServer = async (server: any) => {
   try {
     await ElMessageBox.confirm('确定要删除该服务器吗？', '提示', { type: 'warning' })
-    await request.delete(`/servers/${server.id}`)
+    await request.delete(`/api/v1/servers/${server.id}`)
     ElMessage.success('删除成功')
     fetchServers()
   } catch (error) {
@@ -386,7 +384,7 @@ const viewMetrics = (server: any) => {
 
 const viewLogs = async (server: any) => {
   try {
-    const res = await request.get(`/servers/${server.id}/logs`)
+    const res = await request.get(`/api/v1/servers/${server.id}/logs`)
     ElMessage.info('日志功能开发中')
   } catch (error) {
     ElMessage.error('获取日志失败')
@@ -395,7 +393,7 @@ const viewLogs = async (server: any) => {
 
 const analyzeServer = async (server: any) => {
   try {
-    const res = await request.post(`/servers/${server.id}/analyze`)
+    const res = await request.post(`/api/v1/servers/${server.id}/analyze`)
     aiResult.value = res.data
     showAIDialog.value = true
   } catch (error) {
@@ -412,7 +410,7 @@ const executeCommand = (server: any) => {
 const runCommand = async () => {
   commandLoading.value = true
   try {
-    const res = await request.post(`/servers/${commandForm.value.serverId}/command`, {
+    const res = await request.post(`/api/v1/servers/${commandForm.value.serverId}/command`, {
       command: commandForm.value.command
     })
     commandResult.value = res.data?.output || '执行成功'
@@ -425,7 +423,7 @@ const runCommand = async () => {
 
 const refreshStatus = async (server: any) => {
   try {
-    await request.post(`/servers/${server.id}/refresh`)
+    await request.post(`/api/v1/servers/${server.id}/refresh`)
     ElMessage.success('刷新成功')
     fetchServers()
   } catch (error) {
@@ -435,7 +433,7 @@ const refreshStatus = async (server: any) => {
 
 const viewContainers = async (server: any) => {
   try {
-    const res = await request.get(`/servers/${server.id}/containers`)
+    const res = await request.get(`/api/v1/servers/${server.id}/containers`)
     ElMessage.info('容器列表功能开发中')
   } catch (error) {
     ElMessage.error('获取容器失败')
@@ -444,7 +442,7 @@ const viewContainers = async (server: any) => {
 
 const viewPorts = async (server: any) => {
   try {
-    const res = await request.get(`/servers/${server.id}/ports`)
+    const res = await request.get(`/api/v1/servers/${server.id}/ports`)
     ElMessage.info('端口信息功能开发中')
   } catch (error) {
     ElMessage.error('获取端口失败')

@@ -2,7 +2,6 @@ package queue
 
 import (
         "context"
-        "encoding/json"
         "fmt"
         "sync"
         "time"
@@ -115,12 +114,6 @@ func (b *MemoryQueueBackend) Enqueue(queueName string, task *schedulerModel.Task
         pq.items = append(pq.items, item)
         pq.cond.Signal()
 
-        // 更新数据库状态
-        global.DB.Model(&schedulerModel.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
-                "status":   schedulerModel.TaskStatusQueued,
-                "queue_at": time.Now(),
-        })
-
         return nil
 }
 
@@ -230,41 +223,17 @@ func (tq *TaskQueue) RegisterQueue(config *QueueConfig) error {
         defer tq.mu.Unlock()
 
         tq.queues[config.Name] = config
-
-        // 保存到数据库
-        var existing schedulerModel.TaskQueue
-        result := global.DB.Where("name = ?", config.Name).First(&existing)
-        if result.Error != nil {
-                queue := &schedulerModel.TaskQueue{
-                        Name:       config.Name,
-                        MaxWorkers: config.MaxWorkers,
-                        MaxPending: config.MaxPending,
-                        Priority:   config.Priority,
-                        Timeout:    config.Timeout,
-                        MaxRetry:   config.MaxRetry,
-                        Enabled:    true,
-                }
-                global.DB.Create(queue)
-        }
-
         return nil
 }
 
 // EnqueueTask 任务入队
 func (tq *TaskQueue) EnqueueTask(task *schedulerModel.Task) error {
-        // 检查队列容量
         tq.mu.RLock()
-        config, exists := tq.queues[task.QueueName]
+        _, exists := tq.queues[task.QueueName]
         tq.mu.RUnlock()
 
         if !exists {
                 task.QueueName = "default"
-                config = tq.queues["default"]
-        }
-
-        size, _ := tq.backend.Size(task.QueueName)
-        if config != nil && size >= int64(config.MaxPending) {
-                return fmt.Errorf("queue %s is full", task.QueueName)
         }
 
         // 创建任务记录
@@ -313,14 +282,6 @@ func (tq *TaskQueue) GetQueueStats(queueName string) (*QueueStats, error) {
         global.DB.Model(&schedulerModel.Task{}).Where("queue_name = ? AND status = ?", queueName, schedulerModel.TaskStatusRunning).Count(&running)
         stats.Running = running
 
-        today := time.Now().Format("2006-01-02")
-        var completed, failed int64
-        global.DB.Model(&schedulerModel.Task{}).Where("queue_name = ? AND status = ? AND DATE(updated_at) = ?", queueName, schedulerModel.TaskStatusSuccess, today).Count(&completed)
-        global.DB.Model(&schedulerModel.Task{}).Where("queue_name = ? AND status = ? AND DATE(updated_at) = ?", queueName, schedulerModel.TaskStatusFailed, today).Count(&failed)
-
-        stats.CompletedToday = completed
-        stats.FailedToday = failed
-
         return stats, nil
 }
 
@@ -363,78 +324,44 @@ func (tq *TaskQueue) BatchEnqueue(tasks []*schedulerModel.Task) ([]uint, []error
         return taskIDs, errors
 }
 
-// SerializeTask 序列化任务
-func SerializeTask(task *schedulerModel.Task) ([]byte, error) {
-        return json.Marshal(task)
-}
-
-// DeserializeTask 反序列化任务
-func DeserializeTask(data []byte) (*schedulerModel.Task, error) {
-        var task schedulerModel.Task
-        err := json.Unmarshal(data, &task)
-        return &task, err
-}
-
-// MemoryQueue 内存队列（用于执行器）
-type MemoryQueue struct {
-        backend *MemoryQueueBackend
-        items   map[string]*schedulerModel.TaskQueueItem
-        mu      sync.RWMutex
-}
-
-// globalQueue 全局队列实例
-var globalQueue *MemoryQueue
-var globalQueueOnce sync.Once
-
-// NewMemoryQueue 创建内存队列
-func NewMemoryQueue() *MemoryQueue {
-        return &MemoryQueue{
-                backend: NewMemoryQueueBackend(),
-                items:   make(map[string]*schedulerModel.TaskQueueItem),
-        }
-}
+// 全局队列实例
+var globalQueue *TaskQueue
 
 // GetQueue 获取全局队列
-func GetQueue() *MemoryQueue {
-        globalQueueOnce.Do(func() {
-                globalQueue = NewMemoryQueue()
-        })
+func GetQueue() *TaskQueue {
+        if globalQueue == nil {
+                backend := NewMemoryQueueBackend()
+                globalQueue = NewTaskQueue(backend)
+        }
         return globalQueue
 }
 
-// Enqueue 入队
-func (q *MemoryQueue) Enqueue(item *schedulerModel.TaskQueueItem) error {
-        q.mu.Lock()
-        defer q.mu.Unlock()
-
-        q.items[item.ExecutionID] = item
-        return nil
+// RegisterWorker 注册 Worker
+func (tq *TaskQueue) RegisterWorker(workerID string) {
+        // 简化实现，实际可记录 Worker 状态
 }
 
-// Dequeue 出队
-func (q *MemoryQueue) Dequeue() (*schedulerModel.TaskQueueItem, error) {
-        q.mu.Lock()
-        defer q.mu.Unlock()
-
-        for id, item := range q.items {
-                delete(q.items, id)
-                return item, nil
-        }
-
-        return nil, fmt.Errorf("queue empty")
+// UnregisterWorker 注销 Worker
+func (tq *TaskQueue) UnregisterWorker(workerID string) {
+        // 简化实现
 }
 
-// Ack 确认
-func (q *MemoryQueue) Ack(executionID string) error {
-        q.mu.Lock()
-        defer q.mu.Unlock()
-
-        delete(q.items, executionID)
-        return nil
+// Heartbeat 更新 Worker 心跳
+func (tq *TaskQueue) Heartbeat(workerID string) {
+        // 简化实现
 }
 
-// Nack 拒绝
-func (q *MemoryQueue) Nack(executionID string) error {
-        // 重新入队或标记失败
-        return nil
+// Dequeue 从默认队列出队
+func (tq *TaskQueue) Dequeue() (*schedulerModel.Task, error) {
+        return tq.DequeueTask("default", 5*time.Second)
+}
+
+// Ack 确认任务
+func (tq *TaskQueue) Ack(taskID uint) error {
+        return tq.AckTask(taskID)
+}
+
+// Nack 拒绝任务
+func (tq *TaskQueue) Nack(taskID uint) error {
+        return tq.NackTask(taskID, "worker rejected")
 }

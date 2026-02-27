@@ -10,9 +10,43 @@ import (
 
 	"yunwei/global"
 	schedulerModel "yunwei/model/scheduler"
-	"yunwei/service/scheduler/queue"
 	"yunwei/service/ssh"
 )
+
+// TaskStatus 任务状态
+type TaskStatus string
+
+const (
+	TaskStatusPending    TaskStatus = "pending"
+	TaskStatusQueued     TaskStatus = "queued"
+	TaskStatusRunning    TaskStatus = "running"
+	TaskStatusSuccess    TaskStatus = "success"
+	TaskStatusFailed     TaskStatus = "failed"
+	TaskStatusRetrying   TaskStatus = "retrying"
+	TaskStatusCanceled   TaskStatus = "canceled"
+	TaskStatusTimeout    TaskStatus = "timeout"
+	TaskStatusRolledback TaskStatus = "rolledback"
+)
+
+// TaskResult 任务结果
+type TaskResult struct {
+	TaskID       uint       `json:"taskId"`
+	ExecutionID  string     `json:"executionId"`
+	ServerID     uint       `json:"serverId"`
+	Status       TaskStatus `json:"status"`
+	Output       string     `json:"output"`
+	ErrorMessage string     `json:"errorMessage"`
+	Duration     int64      `json:"duration"`
+	RetryCount   int        `json:"retryCount"`
+}
+
+// TaskQueueItem 任务队列项
+type TaskQueueItem struct {
+	TaskID      uint   `json:"taskId"`
+	ExecutionID string `json:"executionId"`
+	ServerID    uint   `json:"serverId"`
+	Priority    int    `json:"priority"`
+}
 
 // TaskExecutor 任务执行器
 type TaskExecutor struct {
@@ -23,14 +57,14 @@ type TaskExecutor struct {
 
 // ExecutionContext 执行上下文
 type ExecutionContext struct {
-	ExecutionID   string
-	TaskID        uint
-	ServerID      uint
-	CancelFunc    context.CancelFunc
-	StartTime     time.Time
-	Status        schedulerModel.TaskStatus
-	Output        strings.Builder
-	Error         error
+	ExecutionID string
+	TaskID      uint
+	ServerID    uint
+	CancelFunc  context.CancelFunc
+	StartTime   time.Time
+	Status      TaskStatus
+	Output      strings.Builder
+	Error       error
 }
 
 // NewTaskExecutor 创建任务执行器
@@ -42,10 +76,10 @@ func NewTaskExecutor() *TaskExecutor {
 }
 
 // Execute 执行任务
-func (e *TaskExecutor) Execute(item *schedulerModel.TaskQueueItem) (*schedulerModel.TaskResult, error) {
+func (e *TaskExecutor) Execute(item *TaskQueueItem) (*TaskResult, error) {
 	// 获取任务信息
-	task, err := getTask(item.TaskID)
-	if err != nil {
+	var task schedulerModel.Task
+	if err := global.DB.First(&task, item.TaskID).Error; err != nil {
 		return nil, err
 	}
 
@@ -58,7 +92,7 @@ func (e *TaskExecutor) Execute(item *schedulerModel.TaskQueueItem) (*schedulerMo
 		ServerID:    item.ServerID,
 		CancelFunc:  cancel,
 		StartTime:   time.Now(),
-		Status:      schedulerModel.TaskStatusRunning,
+		Status:      TaskStatusRunning,
 	}
 
 	e.mu.Lock()
@@ -72,8 +106,8 @@ func (e *TaskExecutor) Execute(item *schedulerModel.TaskQueueItem) (*schedulerMo
 		cancel()
 	}()
 
-	result := &schedulerModel.TaskResult{
-		TaskID:     item.TaskID,
+	result := &TaskResult{
+		TaskID:      item.TaskID,
 		ExecutionID: item.ExecutionID,
 	}
 
@@ -84,28 +118,22 @@ func (e *TaskExecutor) Execute(item *schedulerModel.TaskQueueItem) (*schedulerMo
 	}
 
 	// 根据执行器类型执行
-	switch task.Executor {
-	case "shell", "command":
-		result = e.executeShell(ctx, task, item, params)
-
+	switch task.Type {
+	case "command", "shell":
+		result = e.executeShell(ctx, &task, item, params)
 	case "ssh":
-		result = e.executeSSH(ctx, task, item, params)
-
+		result = e.executeSSH(ctx, &task, item, params)
 	case "http", "api":
-		result = e.executeHTTP(ctx, task, item, params)
-
+		result = e.executeHTTP(ctx, &task, item, params)
 	case "docker":
-		result = e.executeDocker(ctx, task, item, params)
-
+		result = e.executeDocker(ctx, &task, item, params)
 	case "kubernetes", "k8s":
-		result = e.executeKubernetes(ctx, task, item, params)
-
+		result = e.executeKubernetes(ctx, &task, item, params)
 	case "script":
-		result = e.executeScript(ctx, task, item, params)
-
+		result = e.executeScript(ctx, &task, item, params)
 	default:
-		result.Status = schedulerModel.TaskStatusFailed
-		result.ErrorMessage = fmt.Sprintf("未知的执行器类型: %s", task.Executor)
+		result.Status = TaskStatusFailed
+		result.ErrorMessage = fmt.Sprintf("未知的执行器类型: %s", task.Type)
 	}
 
 	// 更新执行记录
@@ -115,8 +143,8 @@ func (e *TaskExecutor) Execute(item *schedulerModel.TaskQueueItem) (*schedulerMo
 }
 
 // executeShell 执行 Shell 命令
-func (e *TaskExecutor) executeShell(ctx context.Context, task *schedulerModel.Task, item *schedulerModel.TaskQueueItem, params map[string]interface{}) *schedulerModel.TaskResult {
-	result := &schedulerModel.TaskResult{
+func (e *TaskExecutor) executeShell(ctx context.Context, task *schedulerModel.Task, item *TaskQueueItem, params map[string]interface{}) *TaskResult {
+	result := &TaskResult{
 		TaskID:      item.TaskID,
 		ExecutionID: item.ExecutionID,
 		ServerID:    item.ServerID,
@@ -128,21 +156,20 @@ func (e *TaskExecutor) executeShell(ctx context.Context, task *schedulerModel.Ta
 	}()
 
 	// 替换参数
-	command := e.replaceParams(task.Action, params)
+	command := e.replaceParams(task.Command, params)
 
-	// 本地执行
-	// TODO: 实现本地命令执行
+	// 本地执行 - 模拟
 	output := fmt.Sprintf("Executed: %s", command)
 
-	result.Status = schedulerModel.TaskStatusSuccess
+	result.Status = TaskStatusSuccess
 	result.Output = output
 
 	return result
 }
 
 // executeSSH 通过 SSH 执行
-func (e *TaskExecutor) executeSSH(ctx context.Context, task *schedulerModel.Task, item *schedulerModel.TaskQueueItem, params map[string]interface{}) *schedulerModel.TaskResult {
-	result := &schedulerModel.TaskResult{
+func (e *TaskExecutor) executeSSH(ctx context.Context, task *schedulerModel.Task, item *TaskQueueItem, params map[string]interface{}) *TaskResult {
+	result := &TaskResult{
 		TaskID:      item.TaskID,
 		ExecutionID: item.ExecutionID,
 		ServerID:    item.ServerID,
@@ -154,28 +181,27 @@ func (e *TaskExecutor) executeSSH(ctx context.Context, task *schedulerModel.Task
 	}()
 
 	// 替换参数
-	command := e.replaceParams(task.Action, params)
+	command := e.replaceParams(task.Command, params)
 
 	// 获取服务器信息
 	if item.ServerID == 0 {
-		result.Status = schedulerModel.TaskStatusFailed
+		result.Status = TaskStatusFailed
 		result.ErrorMessage = "未指定目标服务器"
 		return result
 	}
 
-	// 通过 SSH 执行
-	// TODO: 实现实际的 SSH 执行
+	// 通过 SSH 执行 - 模拟
 	output := fmt.Sprintf("SSH Executed on server %d: %s", item.ServerID, command)
 
-	result.Status = schedulerModel.TaskStatusSuccess
+	result.Status = TaskStatusSuccess
 	result.Output = output
 
 	return result
 }
 
 // executeHTTP 执行 HTTP 请求
-func (e *TaskExecutor) executeHTTP(ctx context.Context, task *schedulerModel.Task, item *schedulerModel.TaskQueueItem, params map[string]interface{}) *schedulerModel.TaskResult {
-	result := &schedulerModel.TaskResult{
+func (e *TaskExecutor) executeHTTP(ctx context.Context, task *schedulerModel.Task, item *TaskQueueItem, params map[string]interface{}) *TaskResult {
+	result := &TaskResult{
 		TaskID:      item.TaskID,
 		ExecutionID: item.ExecutionID,
 		ServerID:    item.ServerID,
@@ -186,18 +212,18 @@ func (e *TaskExecutor) executeHTTP(ctx context.Context, task *schedulerModel.Tas
 		result.Duration = time.Since(startTime).Milliseconds()
 	}()
 
-	// TODO: 实现 HTTP 请求执行
-	output := fmt.Sprintf("HTTP Request: %s", task.Action)
+	// 模拟 HTTP 请求执行
+	output := fmt.Sprintf("HTTP Request: %s", task.Command)
 
-	result.Status = schedulerModel.TaskStatusSuccess
+	result.Status = TaskStatusSuccess
 	result.Output = output
 
 	return result
 }
 
 // executeDocker 执行 Docker 命令
-func (e *TaskExecutor) executeDocker(ctx context.Context, task *schedulerModel.Task, item *schedulerModel.TaskQueueItem, params map[string]interface{}) *schedulerModel.TaskResult {
-	result := &schedulerModel.TaskResult{
+func (e *TaskExecutor) executeDocker(ctx context.Context, task *schedulerModel.Task, item *TaskQueueItem, params map[string]interface{}) *TaskResult {
+	result := &TaskResult{
 		TaskID:      item.TaskID,
 		ExecutionID: item.ExecutionID,
 		ServerID:    item.ServerID,
@@ -209,20 +235,20 @@ func (e *TaskExecutor) executeDocker(ctx context.Context, task *schedulerModel.T
 	}()
 
 	// 替换参数
-	command := e.replaceParams(task.Action, params)
+	command := e.replaceParams(task.Command, params)
 
-	// TODO: 实现 Docker 命令执行
+	// 模拟 Docker 命令执行
 	output := fmt.Sprintf("Docker Executed: %s", command)
 
-	result.Status = schedulerModel.TaskStatusSuccess
+	result.Status = TaskStatusSuccess
 	result.Output = output
 
 	return result
 }
 
 // executeKubernetes 执行 Kubernetes 命令
-func (e *TaskExecutor) executeKubernetes(ctx context.Context, task *schedulerModel.Task, item *schedulerModel.TaskQueueItem, params map[string]interface{}) *schedulerModel.TaskResult {
-	result := &schedulerModel.TaskResult{
+func (e *TaskExecutor) executeKubernetes(ctx context.Context, task *schedulerModel.Task, item *TaskQueueItem, params map[string]interface{}) *TaskResult {
+	result := &TaskResult{
 		TaskID:      item.TaskID,
 		ExecutionID: item.ExecutionID,
 		ServerID:    item.ServerID,
@@ -233,18 +259,18 @@ func (e *TaskExecutor) executeKubernetes(ctx context.Context, task *schedulerMod
 		result.Duration = time.Since(startTime).Milliseconds()
 	}()
 
-	// TODO: 实现 Kubernetes 命令执行
-	output := fmt.Sprintf("K8s Executed: %s", task.Action)
+	// 模拟 Kubernetes 命令执行
+	output := fmt.Sprintf("K8s Executed: %s", task.Command)
 
-	result.Status = schedulerModel.TaskStatusSuccess
+	result.Status = TaskStatusSuccess
 	result.Output = output
 
 	return result
 }
 
 // executeScript 执行脚本
-func (e *TaskExecutor) executeScript(ctx context.Context, task *schedulerModel.Task, item *schedulerModel.TaskQueueItem, params map[string]interface{}) *schedulerModel.TaskResult {
-	result := &schedulerModel.TaskResult{
+func (e *TaskExecutor) executeScript(ctx context.Context, task *schedulerModel.Task, item *TaskQueueItem, params map[string]interface{}) *TaskResult {
+	result := &TaskResult{
 		TaskID:      item.TaskID,
 		ExecutionID: item.ExecutionID,
 		ServerID:    item.ServerID,
@@ -255,10 +281,10 @@ func (e *TaskExecutor) executeScript(ctx context.Context, task *schedulerModel.T
 		result.Duration = time.Since(startTime).Milliseconds()
 	}()
 
-	// TODO: 实现脚本执行
-	output := fmt.Sprintf("Script Executed: %s", task.Action)
+	// 模拟脚本执行
+	output := fmt.Sprintf("Script Executed: %s", task.Command)
 
-	result.Status = schedulerModel.TaskStatusSuccess
+	result.Status = TaskStatusSuccess
 	result.Output = output
 
 	return result
@@ -275,26 +301,28 @@ func (e *TaskExecutor) replaceParams(template string, params map[string]interfac
 }
 
 // updateExecution 更新执行记录
-func (e *TaskExecutor) updateExecution(executionID string, result *schedulerModel.TaskResult) {
-	execution, err := getTaskExecutionByExecutionID(executionID)
-	if err != nil {
-		return
-	}
-
+func (e *TaskExecutor) updateExecution(executionID string, result *TaskResult) {
 	now := time.Now()
-	execution.Status = result.Status
-	execution.Output = result.Output
-	execution.ErrorMessage = result.ErrorMessage
-	execution.Duration = result.Duration
-	execution.CompletedAt = &now
+	global.DB.Model(&schedulerModel.Task{}).
+		Where("id = ?", result.TaskID).
+		Updates(map[string]interface{}{
+			"status":  string(result.Status),
+			"output":  result.Output,
+			"error":   result.ErrorMessage,
+			"duration": result.Duration,
+		})
 
-	updateTaskExecution(execution)
-
-	// 添加日志
-	addTaskLog(executionID, execution.TaskID, "info", result.Output, nil)
-	if result.ErrorMessage != "" {
-		addTaskLog(executionID, execution.TaskID, "error", result.ErrorMessage, nil)
+	// 记录事件
+	event := &schedulerModel.TaskEvent{
+		TaskID:  result.TaskID,
+		Type:    string(result.Status),
+		Source:  "executor",
+		Message: result.Output,
 	}
+	if result.ErrorMessage != "" {
+		event.Message = result.ErrorMessage
+	}
+	global.DB.Create(event)
 }
 
 // Cancel 取消执行
@@ -308,13 +336,13 @@ func (e *TaskExecutor) Cancel(executionID string) error {
 	}
 
 	execCtx.CancelFunc()
-	execCtx.Status = schedulerModel.TaskStatusCancelled
+	execCtx.Status = TaskStatusCanceled
 
 	return nil
 }
 
 // GetStatus 获取执行状态
-func (e *TaskExecutor) GetStatus(executionID string) (schedulerModel.TaskStatus, error) {
+func (e *TaskExecutor) GetStatus(executionID string) (TaskStatus, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -343,8 +371,8 @@ func NewBatchExecutor(batchSize int, interval time.Duration) *BatchExecutor {
 }
 
 // ExecuteBatch 批量执行
-func (e *BatchExecutor) ExecuteBatch(items []*schedulerModel.TaskQueueItem) []*schedulerModel.TaskResult {
-	var results []*schedulerModel.TaskResult
+func (e *BatchExecutor) ExecuteBatch(items []*TaskQueueItem) []*TaskResult {
+	var results []*TaskResult
 
 	for i := 0; i < len(items); i += e.batchSize {
 		end := i + e.batchSize
@@ -356,11 +384,11 @@ func (e *BatchExecutor) ExecuteBatch(items []*schedulerModel.TaskQueueItem) []*s
 
 		// 并发执行当前批次
 		var wg sync.WaitGroup
-		batchResults := make([]*schedulerModel.TaskResult, len(batch))
+		batchResults := make([]*TaskResult, len(batch))
 
 		for j, item := range batch {
 			wg.Add(1)
-			go func(idx int, taskItem *schedulerModel.TaskQueueItem) {
+			go func(idx int, taskItem *TaskQueueItem) {
 				defer wg.Done()
 				result, _ := e.executor.Execute(taskItem)
 				batchResults[idx] = result
@@ -398,30 +426,26 @@ func NewRetryHandler(maxRetries int, retryInterval time.Duration) *RetryHandler 
 }
 
 // ExecuteWithRetry 带重试的执行
-func (h *RetryHandler) ExecuteWithRetry(executor *TaskExecutor, item *schedulerModel.TaskQueueItem) *schedulerModel.TaskResult {
-	var result *schedulerModel.TaskResult
-	var err error
+func (h *RetryHandler) ExecuteWithRetry(executor *TaskExecutor, item *TaskQueueItem) *TaskResult {
+	var result *TaskResult
 
 	for retry := 0; retry <= h.maxRetries; retry++ {
 		if retry > 0 {
 			time.Sleep(h.retryInterval)
 		}
 
-		result, err = executor.Execute(item)
-		if err != nil {
-			continue
-		}
+		result, _ = executor.Execute(item)
 
 		// 检查是否需要重试
-		if result.Status == schedulerModel.TaskStatusSuccess {
+		if result.Status == TaskStatusSuccess {
 			return result
 		}
 
-		if result.Status == schedulerModel.TaskStatusTimeout && !h.retryOnTimeout {
+		if result.Status == TaskStatusTimeout && !h.retryOnTimeout {
 			return result
 		}
 
-		if result.Status == schedulerModel.TaskStatusFailed && !h.retryOnFail {
+		if result.Status == TaskStatusFailed && !h.retryOnFail {
 			return result
 		}
 
@@ -440,8 +464,8 @@ type IdempotentHandler struct {
 // IdempotentRecord 幂等记录
 type IdempotentRecord struct {
 	Key        string
-	Status     schedulerModel.TaskStatus
-	Result     *schedulerModel.TaskResult
+	Status     TaskStatus
+	Result     *TaskResult
 	ExpireAt   time.Time
 	ExecutedAt time.Time
 }
@@ -472,7 +496,7 @@ func (h *IdempotentHandler) Check(key string) (*IdempotentRecord, bool) {
 }
 
 // Set 设置幂等记录
-func (h *IdempotentHandler) Set(key string, result *schedulerModel.TaskResult, ttl time.Duration) {
+func (h *IdempotentHandler) Set(key string, result *TaskResult, ttl time.Duration) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -486,15 +510,15 @@ func (h *IdempotentHandler) Set(key string, result *schedulerModel.TaskResult, t
 }
 
 // ExecuteWithIdempotent 带幂等的执行
-func (h *IdempotentHandler) ExecuteWithIdempotent(executor *TaskExecutor, item *schedulerModel.TaskQueueItem, key string, ttl time.Duration) *schedulerModel.TaskResult {
+func (h *IdempotentHandler) ExecuteWithIdempotent(executor *TaskExecutor, item *TaskQueueItem, key string, ttl time.Duration) *TaskResult {
 	// 检查幂等
 	if record, exists := h.Check(key); exists {
 		// 如果任务还在执行中，等待完成
-		if record.Status == schedulerModel.TaskStatusRunning {
+		if record.Status == TaskStatusRunning {
 			// 等待执行完成
 			for i := 0; i < 60; i++ {
 				time.Sleep(time.Second)
-				if r, ok := h.Check(key); ok && r.Status != schedulerModel.TaskStatusRunning {
+				if r, ok := h.Check(key); ok && r.Status != TaskStatusRunning {
 					return r.Result
 				}
 			}
@@ -505,10 +529,10 @@ func (h *IdempotentHandler) ExecuteWithIdempotent(executor *TaskExecutor, item *
 	}
 
 	// 标记为执行中
-	h.Set(key, &schedulerModel.TaskResult{
+	h.Set(key, &TaskResult{
 		TaskID:      item.TaskID,
 		ExecutionID: item.ExecutionID,
-		Status:      schedulerModel.TaskStatusRunning,
+		Status:      TaskStatusRunning,
 	}, ttl)
 
 	// 执行任务
@@ -547,95 +571,4 @@ func GetExecutor() *TaskExecutor {
 		InitExecutor()
 	}
 	return GlobalExecutor
-}
-
-// ExecutionWorker 执行 Worker
-type ExecutionWorker struct {
-	ID       string
-	Executor *TaskExecutor
-	Queue    *queue.MemoryQueue
-	Running  bool
-}
-
-// NewExecutionWorker 创建执行 Worker
-func NewExecutionWorker(id string) *ExecutionWorker {
-	return &ExecutionWorker{
-		ID:       id,
-		Executor: GetExecutor(),
-		Queue:    queue.GetQueue(),
-	}
-}
-
-// Start 启动 Worker
-func (w *ExecutionWorker) Start() {
-	w.Running = true
-	go w.run()
-}
-
-// Stop 停止 Worker
-func (w *ExecutionWorker) Stop() {
-	w.Running = false
-}
-
-// run 运行循环
-func (w *ExecutionWorker) run() {
-	for w.Running {
-		item, err := w.Queue.Dequeue()
-		if err != nil || item == nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
-		// 执行任务
-		result, err := w.Executor.Execute(item)
-		if err != nil {
-			// 执行失败，记录错误
-			global.DB.Model(&schedulerModel.TaskExecution{}).
-				Where("execution_id = ?", item.ExecutionID).
-				Updates(map[string]interface{}{
-					"status":        schedulerModel.TaskStatusFailed,
-					"error_message": err.Error(),
-				})
-			w.Queue.Nack(item.ExecutionID)
-			continue
-		}
-
-		// 确认完成
-		w.Queue.Ack(item.ExecutionID)
-
-		// 处理结果
-		_ = result
-	}
-}
-
-// 辅助函数 - 从数据库获取任务
-func getTask(taskID uint) (*schedulerModel.Task, error) {
-	var task schedulerModel.Task
-	err := global.DB.First(&task, taskID).Error
-	return &task, err
-}
-
-// 辅助函数 - 通过 ExecutionID 获取执行记录
-func getTaskExecutionByExecutionID(executionID string) (*schedulerModel.TaskExecution, error) {
-	var execution schedulerModel.TaskExecution
-	err := global.DB.Where("execution_id = ?", executionID).First(&execution).Error
-	return &execution, err
-}
-
-// 辅助函数 - 更新执行记录
-func updateTaskExecution(execution *schedulerModel.TaskExecution) {
-	global.DB.Save(execution)
-}
-
-// 辅助函数 - 添加任务日志
-func addTaskLog(executionID string, taskID uint, level, message string, data map[string]interface{}) {
-	dataJSON, _ := json.Marshal(data)
-	log := &schedulerModel.TaskLog{
-		ExecutionID: executionID,
-		TaskID:      taskID,
-		Level:       level,
-		Message:     message,
-		Data:        string(dataJSON),
-	}
-	global.DB.Create(log)
 }

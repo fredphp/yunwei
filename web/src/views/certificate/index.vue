@@ -224,7 +224,7 @@ const certStats = computed(() => {
 const fetchCertificates = async () => {
   loading.value = true
   try {
-    const res = await request.get('/certificates')
+    const res = await request.get('/api/v1/certificates')
     certificates.value = res.data || []
   } catch (error) {
     ElMessage.error('获取证书列表失败')
@@ -236,7 +236,7 @@ const fetchCertificates = async () => {
 const fetchRenewalHistory = async () => {
   historyLoading.value = true
   try {
-    const res = await request.get('/certificates/history')
+    const res = await request.get('/api/v1/certificates/history')
     renewalHistory.value = res.data || []
   } catch (error) {
     console.error('获取续期历史失败', error)
@@ -247,7 +247,7 @@ const fetchRenewalHistory = async () => {
 
 const addCert = async () => {
   try {
-    await request.post('/certificates', certForm.value)
+    await request.post('/api/v1/certificates', certForm.value)
     ElMessage.success('添加成功')
     showAddDialog.value = false
     fetchCertificates()
@@ -258,7 +258,7 @@ const addCert = async () => {
 
 const checkCert = async (cert: any) => {
   try {
-    const res = await request.post(`/certificates/${cert.id}/check`)
+    const res = await request.post(`/api/v1/certificates/${cert.id}/check`)
     ElMessage.success('检查完成')
     // 更新列表中的证书信息
     fetchCertificates()
@@ -269,7 +269,7 @@ const checkCert = async (cert: any) => {
 
 const checkAllCerts = async () => {
   try {
-    await request.post('/certificates/check-all')
+    await request.post('/api/v1/certificates/check-all')
     ElMessage.success('所有证书检查完成')
     fetchCertificates()
   } catch (error) {
@@ -280,7 +280,7 @@ const checkAllCerts = async () => {
 const renewCert = async (cert: any) => {
   try {
     await ElMessageBox.confirm('确定要续期该证书吗？', '确认')
-    const res = await request.post(`/certificates/${cert.id}/renew`)
+    const res = await request.post(`/api/v1/certificates/${cert.id}/renew`)
     ElMessage.success('续期请求已提交')
     fetchRenewalHistory()
     fetchCertificates()
@@ -292,7 +292,7 @@ const renewCert = async (cert: any) => {
 const deleteCert = async (cert: any) => {
   try {
     await ElMessageBox.confirm('确定要删除该证书吗？', '确认', { type: 'warning' })
-    await request.delete(`/certificates/${cert.id}`)
+    await request.delete(`/api/v1/certificates/${cert.id}`)
     ElMessage.success('删除成功')
     fetchCertificates()
   } catch (error) {
@@ -303,7 +303,7 @@ const deleteCert = async (cert: any) => {
 const requestCert = async () => {
   requesting.value = true
   try {
-    await request.post('/certificates/request', requestForm.value)
+    await request.post('/api/v1/certificates/request', requestForm.value)
     ElMessage.success('证书申请已提交，请稍后刷新查看结果')
     requestForm.value = { domain: '', email: '', dnsProvider: 'http' }
   } catch (error) {
@@ -315,7 +315,7 @@ const requestCert = async () => {
 
 const updateCert = async (cert: any) => {
   try {
-    await request.put(`/certificates/${cert.id}`, cert)
+    await request.put(`/api/v1/certificates/${cert.id}`, cert)
     ElMessage.success('更新成功')
   } catch (error) {
     ElMessage.error('更新失败')
