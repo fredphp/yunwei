@@ -358,16 +358,22 @@ func initMenus() {
                 {ParentID: 0, Title: "高可用", Name: "HA", Path: "/ha", Component: "Layout", Icon: "CircleCheck", Sort: 12, Status: 1, Hidden: 0},
                 {ParentID: 0, Title: "灾备备份", Name: "Backup", Path: "/backup", Component: "Layout", Icon: "Files", Sort: 13, Status: 1, Hidden: 0},
                 {ParentID: 0, Title: "成本控制", Name: "Cost", Path: "/cost", Component: "Layout", Icon: "Coin", Sort: 14, Status: 1, Hidden: 0},
-                {ParentID: 0, Title: "租户管理", Name: "Tenant", Path: "/tenant", Component: "views/tenant/index", Icon: "OfficeBuilding", Sort: 15, Status: 1, Hidden: 0},
+                {ParentID: 0, Title: "租户管理", Name: "Tenant", Path: "/tenant", Component: "Layout", Icon: "OfficeBuilding", Sort: 15, Status: 1, Hidden: 0},
                 {ParentID: 0, Title: "系统管理", Name: "System", Path: "/system", Component: "Layout", Icon: "Setting", Sort: 99, Status: 1, Hidden: 0},
 
-                // 服务器管理子菜单
+                // 服务器管理子菜单 (ParentID: 2)
                 {ParentID: 2, Title: "服务器列表", Name: "ServerList", Path: "/servers/list", Component: "views/servers/index", Icon: "List", Sort: 1, Status: 1, Hidden: 0},
 
-                // Kubernetes子菜单
+                // Kubernetes子菜单 (ParentID: 3)
                 {ParentID: 3, Title: "集群管理", Name: "Clusters", Path: "/kubernetes/clusters", Component: "views/kubernetes/index", Icon: "Cluster", Sort: 1, Status: 1, Hidden: 0},
 
-                // 系统管理子菜单
+                // 租户管理子菜单 (ParentID: 15)
+                {ParentID: 15, Title: "租户列表", Name: "TenantList", Path: "/tenant/list", Component: "views/tenant/list/index", Icon: "List", Sort: 1, Status: 1, Hidden: 0},
+                {ParentID: 15, Title: "套餐管理", Name: "TenantPlan", Path: "/tenant/plan", Component: "views/tenant/plan/index", Icon: "PriceTag", Sort: 2, Status: 1, Hidden: 0},
+                {ParentID: 15, Title: "账单管理", Name: "TenantBilling", Path: "/tenant/billing", Component: "views/tenant/billing/index", Icon: "Wallet", Sort: 3, Status: 1, Hidden: 0},
+                {ParentID: 15, Title: "审计日志", Name: "TenantAudit", Path: "/tenant/audit", Component: "views/tenant/audit/index", Icon: "Document", Sort: 4, Status: 1, Hidden: 0},
+
+                // 系统管理子菜单 (ParentID: 16)
                 {ParentID: 16, Title: "用户管理", Name: "UserManage", Path: "/system/user", Component: "views/system/user/index", Icon: "User", Sort: 1, Status: 1, Hidden: 0},
                 {ParentID: 16, Title: "角色管理", Name: "RoleManage", Path: "/system/role", Component: "views/system/role/index", Icon: "UserFilled", Sort: 2, Status: 1, Hidden: 0},
                 {ParentID: 16, Title: "菜单管理", Name: "MenuManage", Path: "/system/menu", Component: "views/system/menu/index", Icon: "Menu", Sort: 3, Status: 1, Hidden: 0},

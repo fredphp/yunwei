@@ -126,12 +126,30 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/system/menu/index.vue'),
         meta: { title: '菜单管理', icon: 'Menu' }
       },
-      // 其他页面
+      // 租户管理
       {
-        path: 'tenant',
-        name: 'Tenant',
-        component: () => import('@/views/tenant/index.vue'),
-        meta: { title: '租户管理', icon: 'OfficeBuilding' }
+        path: 'tenant/list',
+        name: 'TenantList',
+        component: () => import('@/views/tenant/list/index.vue'),
+        meta: { title: '租户列表', icon: 'List' }
+      },
+      {
+        path: 'tenant/plan',
+        name: 'TenantPlan',
+        component: () => import('@/views/tenant/plan/index.vue'),
+        meta: { title: '套餐管理', icon: 'PriceTag' }
+      },
+      {
+        path: 'tenant/billing',
+        name: 'TenantBilling',
+        component: () => import('@/views/tenant/billing/index.vue'),
+        meta: { title: '账单管理', icon: 'Wallet' }
+      },
+      {
+        path: 'tenant/audit',
+        name: 'TenantAudit',
+        component: () => import('@/views/tenant/audit/index.vue'),
+        meta: { title: '审计日志', icon: 'Document' }
       },
       {
         path: 'profile',
