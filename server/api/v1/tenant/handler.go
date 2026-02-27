@@ -5,7 +5,6 @@ import (
         "strconv"
 
         tenantMiddleware "yunwei/middleware/tenant"
-        tenantModel "yunwei/model/tenant"
         tenantService "yunwei/service/tenant"
         "github.com/gin-gonic/gin"
         "gorm.io/gorm"
