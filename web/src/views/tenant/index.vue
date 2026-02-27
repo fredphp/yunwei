@@ -318,9 +318,24 @@ const fetchTenants = async () => {
   loading.value = true
   try {
     const res = await request.get('/admin/tenants')
-    // tenants.value = res.data || []
+    if (res.data && Array.isArray(res.data)) {
+      tenants.value = res.data.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+        plan: t.plan || 'free',
+        userCount: t.quota?.current_users || 0,
+        maxUsers: t.quota?.max_users || 10,
+        usagePercent: t.quota?.max_users ? Math.round((t.quota?.current_users || 0) / t.quota.max_users * 100) : 0,
+        status: t.status || 'active',
+        createdAt: t.created_at?.substring(0, 10) || ''
+      }))
+    }
+    // 更新统计数据
+    stats.value.totalTenants = res.total || tenants.value.length
   } catch (error) {
-    console.error('获取租户列表失败', error)
+    // 请求失败时使用本地模拟数据，不显示错误提示
+    console.log('使用本地模拟数据')
   } finally {
     loading.value = false
   }

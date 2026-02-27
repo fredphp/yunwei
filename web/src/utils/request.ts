@@ -29,19 +29,24 @@ service.interceptors.response.use(
   (response: AxiosResponse) => {
     const res = response.data
     
-    // 业务错误
-    if (res.code !== 0) {
-      ElMessage.error(res.msg || '请求失败')
-      
-      // 登录过期
-      if (res.code === 401) {
-        localStorage.removeItem('token')
-        window.location.href = '/login'
+    // 如果返回的是标准格式（有 code 字段）
+    if (res.code !== undefined) {
+      // 业务错误
+      if (res.code !== 0) {
+        ElMessage.error(res.msg || '请求失败')
+        
+        // 登录过期
+        if (res.code === 401) {
+          localStorage.removeItem('token')
+          window.location.href = '/login'
+        }
+        
+        return Promise.reject(new Error(res.msg || 'Error'))
       }
-      
-      return Promise.reject(new Error(res.msg || 'Error'))
+      return res
     }
     
+    // 如果直接返回数据（没有 code 字段），直接返回
     return res
   },
   (error) => {
