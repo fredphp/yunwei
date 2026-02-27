@@ -52,6 +52,7 @@ func InitRouter(r *gin.Engine) {
                 {
                         // 用户信息
                         authGroup.GET("/user/info", auth.GetUserInfo)
+                        authGroup.GET("/user/menus", system.GetUserMenus)
 
                         // ==================== 权限管理 ====================
                         // 获取当前用户权限
