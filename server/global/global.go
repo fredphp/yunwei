@@ -5,10 +5,10 @@ import (
         "yunwei/config"
         "yunwei/model/agent"
         "yunwei/model/ha"
+        "yunwei/model/kubernetes"
         "yunwei/model/scheduler"
         "yunwei/model/system"
         "yunwei/model/tenant"
-        "yunwei/service/kubernetes"
         "yunwei/utils"
 
         "go.uber.org/zap"
