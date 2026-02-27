@@ -488,7 +488,7 @@ func InitRouter(r *gin.Engine) {
                                 tenantSvc := tenantService.NewTenantService(global.DB)
                                 isolationSvc := tenantService.NewIsolationService(global.DB)
                                 rbacSvc := tenantService.NewRBACService(global.DB)
-                                tenantHandler := tenantApi.NewHandler(tenantSvc, isolationSvc, rbacSvc)
+                                tenantHandler := tenantApi.NewHandler(global.DB, tenantSvc, isolationSvc, rbacSvc)
                                 tenantHandler.RegisterRoutes(tenantGroup)
                         }
                 }
