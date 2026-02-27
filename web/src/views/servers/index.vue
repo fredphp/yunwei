@@ -317,8 +317,10 @@ const fetchServers = async () => {
     const res = await request.get('/servers', {
       params: { page: currentPage.value, pageSize: pageSize.value }
     })
-    servers.value = res.data || []
-    total.value = res.total || 0
+    // 后端 OkWithPage 返回: { code: 0, data: { list: [], total: 10, page: 1, pageSize: 10 }, msg: "" }
+    const data = res.data || {}
+    servers.value = data.list || []
+    total.value = data.total || 0
     
     // 计算统计
     stats.value.total = total.value
@@ -326,7 +328,7 @@ const fetchServers = async () => {
     stats.value.offline = servers.value.filter((s: any) => s.status === 'offline').length
     stats.value.warning = servers.value.filter((s: any) => s.cpuUsage > 80 || s.memUsage > 80).length
   } catch (error) {
-    ElMessage.error('获取服务器列表失败')
+    console.error('获取服务器列表失败', error)
   } finally {
     loading.value = false
   }
