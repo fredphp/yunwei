@@ -1,0 +1,453 @@
+-- AI 自动化运维系统 数据库初始化脚本
+
+CREATE DATABASE IF NOT EXISTS `yunwei` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `yunwei`;
+
+-- ==================== 系统用户表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `username` varchar(64) NOT NULL COMMENT '用户名',
+  `password` varchar(128) NOT NULL COMMENT '密码',
+  `nick_name` varchar(64) DEFAULT NULL COMMENT '昵称',
+  `email` varchar(128) DEFAULT NULL COMMENT '邮箱',
+  `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
+  `avatar` varchar(255) DEFAULT NULL COMMENT '头像',
+  `role_id` bigint unsigned DEFAULT NULL COMMENT '角色ID',
+  `status` tinyint DEFAULT 1 COMMENT '状态: 1启用, 0禁用',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_username` (`username`),
+  KEY `idx_deleted_at` (`deleted_at`),
+  KEY `idx_role_id` (`role_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统用户表';
+
+-- ==================== 角色表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_roles` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `name` varchar(64) NOT NULL COMMENT '角色名称',
+  `keyword` varchar(64) NOT NULL COMMENT '角色关键字',
+  `description` varchar(255) DEFAULT NULL COMMENT '角色描述',
+  `status` tinyint DEFAULT 1 COMMENT '状态: 1启用, 0禁用',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_keyword` (`keyword`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
+
+-- ==================== 菜单表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_menus` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `parent_id` bigint unsigned DEFAULT 0 COMMENT '父菜单ID',
+  `title` varchar(64) NOT NULL COMMENT '菜单标题',
+  `name` varchar(64) NOT NULL COMMENT '路由名称',
+  `path` varchar(255) DEFAULT NULL COMMENT '路由路径',
+  `component` varchar(255) DEFAULT NULL COMMENT '组件路径',
+  `icon` varchar(64) DEFAULT NULL COMMENT '菜单图标',
+  `sort` int DEFAULT 0 COMMENT '排序',
+  `status` tinyint DEFAULT 1 COMMENT '状态: 1启用, 0禁用',
+  `hidden` tinyint DEFAULT 0 COMMENT '是否隐藏: 1隐藏, 0显示',
+  PRIMARY KEY (`id`),
+  KEY `idx_deleted_at` (`deleted_at`),
+  KEY `idx_parent_id` (`parent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='菜单表';
+
+-- ==================== 角色菜单关联表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_role_menus` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `role_id` bigint unsigned NOT NULL COMMENT '角色ID',
+  `menu_id` bigint unsigned NOT NULL COMMENT '菜单ID',
+  PRIMARY KEY (`id`),
+  KEY `idx_role_id` (`role_id`),
+  KEY `idx_menu_id` (`menu_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色菜单关联表';
+
+-- ==================== 角色API关联表 ====================
+
+CREATE TABLE IF NOT EXISTS `sys_role_apis` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `role_id` bigint unsigned NOT NULL COMMENT '角色ID',
+  `api_id` bigint unsigned NOT NULL COMMENT 'API ID',
+  PRIMARY KEY (`id`),
+  KEY `idx_role_id` (`role_id`),
+  KEY `idx_api_id` (`api_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色API关联表';
+
+-- ==================== 用户认证 (兼容旧表) ====================
+
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `username` varchar(64) NOT NULL COMMENT '用户名',
+  `password` varchar(128) NOT NULL COMMENT '密码',
+  `nick_name` varchar(64) DEFAULT NULL COMMENT '昵称',
+  `email` varchar(128) DEFAULT NULL COMMENT '邮箱',
+  `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
+  `avatar` varchar(255) DEFAULT NULL COMMENT '头像',
+  `role` varchar(32) DEFAULT 'user' COMMENT '角色',
+  `status` tinyint DEFAULT 1 COMMENT '状态: 1启用, 0禁用',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_username` (`username`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+
+-- ==================== 服务器管理 ====================
+
+CREATE TABLE IF NOT EXISTS `server_groups` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `name` varchar(64) NOT NULL COMMENT '分组名称',
+  `description` varchar(255) DEFAULT NULL COMMENT '描述',
+  `parent_id` bigint unsigned DEFAULT 0 COMMENT '父分组ID',
+  PRIMARY KEY (`id`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器分组表';
+
+CREATE TABLE IF NOT EXISTS `servers` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  
+  -- 基本信息
+  `name` varchar(64) NOT NULL COMMENT '服务器名称',
+  `hostname` varchar(64) DEFAULT NULL COMMENT '主机名',
+  `host` varchar(64) NOT NULL COMMENT 'IP地址',
+  `port` int DEFAULT 22 COMMENT 'SSH端口',
+  `user` varchar(32) DEFAULT NULL COMMENT 'SSH用户',
+  `password` varchar(255) DEFAULT NULL COMMENT 'SSH密码(加密)',
+  `private_key` text COMMENT 'SSH私钥(加密)',
+  
+  -- 分组
+  `group_id` bigint unsigned DEFAULT NULL COMMENT '分组ID',
+  
+  -- 系统信息
+  `os` varchar(64) DEFAULT NULL COMMENT '操作系统',
+  `arch` varchar(32) DEFAULT NULL COMMENT '架构',
+  `kernel` varchar(64) DEFAULT NULL COMMENT '内核版本',
+  `cpu_cores` int DEFAULT NULL COMMENT 'CPU核心数',
+  `memory_total` bigint DEFAULT NULL COMMENT '内存总量(MB)',
+  `disk_total` bigint DEFAULT NULL COMMENT '磁盘总量(GB)',
+  
+  -- 状态
+  `status` varchar(16) DEFAULT 'pending' COMMENT '状态: online/offline/pending',
+  `ssh_status` varchar(16) DEFAULT NULL COMMENT 'SSH状态: success/failed',
+  `ssh_error` varchar(255) DEFAULT NULL COMMENT 'SSH错误',
+  
+  -- 实时指标
+  `cpu_usage` double DEFAULT 0 COMMENT 'CPU使用率',
+  `memory_usage` double DEFAULT 0 COMMENT '内存使用率',
+  `disk_usage` double DEFAULT 0 COMMENT '磁盘使用率',
+  `load1` double DEFAULT 0 COMMENT '1分钟负载',
+  `load5` double DEFAULT 0 COMMENT '5分钟负载',
+  `load15` double DEFAULT 0 COMMENT '15分钟负载',
+  
+  -- Agent
+  `agent_id` varchar(64) DEFAULT NULL COMMENT 'Agent ID',
+  `agent_online` tinyint DEFAULT 0 COMMENT 'Agent在线',
+  `last_check` datetime DEFAULT NULL COMMENT '最后检测时间',
+  `last_heartbeat` datetime DEFAULT NULL COMMENT '最后心跳时间',
+  
+  -- 其他
+  `description` varchar(255) DEFAULT NULL COMMENT '描述',
+  
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_agent_id` (`agent_id`),
+  KEY `idx_deleted_at` (`deleted_at`),
+  KEY `idx_group_id` (`group_id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器表';
+
+CREATE TABLE IF NOT EXISTS `server_metrics` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `server_id` bigint unsigned NOT NULL COMMENT '服务器ID',
+  
+  -- CPU
+  `cpu_usage` double DEFAULT 0,
+  `cpu_user` double DEFAULT 0,
+  `cpu_system` double DEFAULT 0,
+  `cpu_idle` double DEFAULT 0,
+  
+  -- 内存
+  `memory_usage` double DEFAULT 0,
+  `memory_used` bigint DEFAULT 0,
+  `memory_free` bigint DEFAULT 0,
+  `memory_cache` bigint DEFAULT 0,
+  
+  -- 磁盘
+  `disk_usage` double DEFAULT 0,
+  `disk_used` bigint DEFAULT 0,
+  `disk_free` bigint DEFAULT 0,
+  `disk_io_read` bigint DEFAULT 0,
+  `disk_io_write` bigint DEFAULT 0,
+  
+  -- 网络
+  `net_in` bigint DEFAULT 0,
+  `net_out` bigint DEFAULT 0,
+  
+  -- 负载
+  `load1` double DEFAULT 0,
+  `load5` double DEFAULT 0,
+  `load15` double DEFAULT 0,
+  
+  -- 进程
+  `process_count` int DEFAULT 0,
+  
+  PRIMARY KEY (`id`),
+  KEY `idx_server_id` (`server_id`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器指标表';
+
+CREATE TABLE IF NOT EXISTS `server_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `server_id` bigint unsigned NOT NULL,
+  `type` varchar(32) DEFAULT NULL COMMENT '类型',
+  `content` text COMMENT '内容',
+  `output` text COMMENT '输出',
+  `error` text COMMENT '错误',
+  `duration` bigint DEFAULT 0 COMMENT '耗时(ms)',
+  PRIMARY KEY (`id`),
+  KEY `idx_server_id` (`server_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器日志表';
+
+-- ==================== Docker 容器 ====================
+
+CREATE TABLE IF NOT EXISTS `docker_containers` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `server_id` bigint unsigned NOT NULL,
+  `container_id` varchar(64) DEFAULT NULL,
+  `name` varchar(128) DEFAULT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  `status` varchar(32) DEFAULT NULL,
+  `state` varchar(32) DEFAULT NULL,
+  `cpu_usage` double DEFAULT 0,
+  `memory_usage` double DEFAULT 0,
+  `net_io` varchar(32) DEFAULT NULL,
+  `block_io` varchar(32) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_server_id` (`server_id`),
+  KEY `idx_container_id` (`container_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Docker容器表';
+
+-- ==================== 端口信息 ====================
+
+CREATE TABLE IF NOT EXISTS `port_infos` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `server_id` bigint unsigned NOT NULL,
+  `port` int NOT NULL,
+  `protocol` varchar(16) DEFAULT NULL,
+  `service` varchar(64) DEFAULT NULL,
+  `pid` int DEFAULT NULL,
+  `process` varchar(128) DEFAULT NULL,
+  `state` varchar(32) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_server_id` (`server_id`),
+  KEY `idx_port` (`port`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='端口信息表';
+
+-- ==================== 告警管理 ====================
+
+CREATE TABLE IF NOT EXISTS `alert_rules` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` datetime DEFAULT NULL,
+  `name` varchar(64) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `metric` varchar(64) NOT NULL COMMENT '指标名称',
+  `operator` varchar(16) NOT NULL COMMENT '操作符',
+  `threshold` double NOT NULL COMMENT '阈值',
+  `duration` int DEFAULT 60 COMMENT '持续时间(秒)',
+  `level` varchar(16) DEFAULT 'warning',
+  `notify_channels` varchar(255) DEFAULT NULL,
+  `status` tinyint DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警规则表';
+
+CREATE TABLE IF NOT EXISTS `alerts` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `rule_id` bigint unsigned DEFAULT NULL,
+  `server_id` bigint unsigned DEFAULT NULL,
+  `level` varchar(16) DEFAULT 'warning',
+  `title` varchar(255) NOT NULL,
+  `message` text,
+  `metric_value` double DEFAULT NULL,
+  `status` varchar(16) DEFAULT 'firing',
+  `fired_at` datetime DEFAULT NULL,
+  `resolved_at` datetime DEFAULT NULL,
+  `resolved_by` varchar(64) DEFAULT NULL,
+  `remark` text,
+  PRIMARY KEY (`id`),
+  KEY `idx_server_id` (`server_id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警记录表';
+
+-- ==================== 初始化数据 ====================
+
+-- 初始化角色
+INSERT INTO `sys_roles` (`name`, `keyword`, `description`, `status`) VALUES
+('超级管理员', 'admin', '系统超级管理员，拥有所有权限', 1),
+('运维人员', 'operator', '运维人员，拥有服务器管理权限', 1),
+('普通用户', 'user', '普通用户，只有查看权限', 1);
+
+-- 初始化菜单
+INSERT INTO `sys_menus` (`parent_id`, `title`, `name`, `path`, `component`, `icon`, `sort`, `status`, `hidden`) VALUES
+-- 一级菜单
+(0, '仪表盘', 'Dashboard', '/dashboard', 'views/dashboard/index', 'Odometer', 1, 1, 0),
+(0, '服务器管理', 'Servers', '/servers', 'Layout', 'Monitor', 2, 1, 0),
+(0, 'Kubernetes', 'Kubernetes', '/kubernetes', 'Layout', 'Grid', 3, 1, 0),
+(0, '灰度发布', 'Canary', '/canary', 'Layout', 'Promotion', 4, 1, 0),
+(0, '负载均衡', 'LoadBalancer', '/loadbalancer', 'Layout', 'Connection', 5, 1, 0),
+(0, '证书管理', 'Certificate', '/certificate', 'Layout', 'DocumentChecked', 6, 1, 0),
+(0, 'CDN管理', 'CDN', '/cdn', 'Layout', 'Position', 7, 1, 0),
+(0, '智能部署', 'Deploy', '/deploy', 'Layout', 'Upload', 8, 1, 0),
+(0, '任务调度', 'Scheduler', '/scheduler', 'Layout', 'Timer', 9, 1, 0),
+(0, 'Agent管理', 'Agents', '/agents', 'Layout', 'Cpu', 10, 1, 0),
+(0, '高可用', 'HA', '/ha', 'Layout', 'CircleCheck', 11, 1, 0),
+(0, '灾备备份', 'Backup', '/backup', 'Layout', 'Files', 12, 1, 0),
+(0, '成本控制', 'Cost', '/cost', 'Layout', 'Coin', 13, 1, 0),
+(0, '系统管理', 'System', '/system', 'Layout', 'Setting', 14, 1, 0),
+
+-- 服务器管理子菜单
+(2, '服务器列表', 'ServerList', '/servers/list', 'views/servers/index', 'List', 1, 1, 0),
+(2, '告警管理', 'Alerts', '/servers/alerts', 'views/alerts/index', 'Bell', 2, 1, 0),
+
+-- Kubernetes子菜单
+(3, '集群管理', 'Clusters', '/kubernetes/clusters', 'views/kubernetes/index', 'Cluster', 1, 1, 0),
+
+-- 系统管理子菜单
+(14, '用户管理', 'UserManage', '/system/user', 'views/system/user/index', 'User', 1, 1, 0),
+(14, '角色管理', 'RoleManage', '/system/role', 'views/system/role/index', 'UserFilled', 2, 1, 0),
+(14, '菜单管理', 'MenuManage', '/system/menu', 'views/system/menu/index', 'Menu', 3, 1, 0);
+
+-- 初始化超级管理员用户 (密码: admin123, MD5加密后)
+INSERT INTO `sys_users` (`username`, `password`, `nick_name`, `email`, `role_id`, `status`) VALUES
+('admin', '0192023a7bbd73250516f069df18b500', '超级管理员', 'admin@example.com', 1, 1);
+
+-- 管理员用户 (兼容旧表, 密码: admin123)
+INSERT INTO `users` (`username`, `password`, `nick_name`, `email`, `role`, `status`) VALUES
+('admin', '0192023a7bbd73250516f069df18b500', '系统管理员', 'admin@example.com', 'admin', 1);
+
+-- 服务器分组
+INSERT INTO `server_groups` (`name`, `description`) VALUES
+('默认分组', '默认服务器分组'),
+('生产环境', '生产环境服务器'),
+('测试环境', '测试环境服务器');
+
+-- 告警规则
+INSERT INTO `alert_rules` (`name`, `description`, `metric`, `operator`, `threshold`, `duration`, `level`, `status`) VALUES
+('CPU使用率告警', 'CPU使用率超过80%', 'cpu_usage', '>', 80, 60, 'warning', 1),
+('CPU使用率严重告警', 'CPU使用率超过95%', 'cpu_usage', '>', 95, 30, 'critical', 1),
+('内存使用率告警', '内存使用率超过85%', 'memory_usage', '>', 85, 60, 'warning', 1),
+('磁盘使用率告警', '磁盘使用率超过90%', 'disk_usage', '>', 90, 60, 'critical', 1);
+
+-- ==================== Kubernetes 管理 ====================
+
+CREATE TABLE IF NOT EXISTS `k8s_clusters` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `name` varchar(64) DEFAULT NULL COMMENT '集群名称',
+  `api_endpoint` varchar(256) DEFAULT NULL COMMENT 'API地址',
+  `token` text COMMENT 'ServiceAccount Token',
+  `kube_config` text COMMENT 'Kubeconfig内容',
+  `status` varchar(16) DEFAULT NULL COMMENT '状态: connected/disconnected/error',
+  `version` varchar(32) DEFAULT NULL COMMENT 'K8s版本',
+  `node_count` int DEFAULT 0 COMMENT '节点数量',
+  `auto_scale_enabled` tinyint DEFAULT 0 COMMENT '启用自动扩容',
+  `min_replicas` int DEFAULT 1 COMMENT '最小副本数',
+  `max_replicas` int DEFAULT 10 COMMENT '最大副本数',
+  `cpu_threshold` double DEFAULT 80 COMMENT 'CPU扩容阈值',
+  `mem_threshold` double DEFAULT 80 COMMENT '内存扩容阈值',
+  `last_sync_at` datetime DEFAULT NULL COMMENT '最后同步时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='K8s集群表';
+
+CREATE TABLE IF NOT EXISTS `k8s_scale_events` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `cluster_id` bigint unsigned DEFAULT NULL COMMENT '集群ID',
+  `namespace` varchar(64) DEFAULT NULL COMMENT '命名空间',
+  `deployment` varchar(128) DEFAULT NULL COMMENT 'Deployment名称',
+  `scale_type` varchar(16) DEFAULT NULL COMMENT '扩容类型: horizontal/vertical/manual/auto',
+  `status` varchar(16) DEFAULT NULL COMMENT '状态: pending/running/success/failed/rollback',
+  `replicas_before` int DEFAULT 0 COMMENT '扩容前副本数',
+  `replicas_after` int DEFAULT 0 COMMENT '扩容后副本数',
+  `replicas_target` int DEFAULT 0 COMMENT '目标副本数',
+  `trigger_reason` text COMMENT '触发原因',
+  `trigger_metric` text COMMENT '触发指标JSON',
+  `ai_decision` text COMMENT 'AI决策',
+  `ai_confidence` double DEFAULT 0 COMMENT 'AI置信度',
+  `ai_auto_approve` tinyint DEFAULT 0 COMMENT 'AI自动批准',
+  `commands` text COMMENT '执行命令',
+  `execution_log` text COMMENT '执行日志',
+  `error_message` text COMMENT '错误信息',
+  `started_at` datetime DEFAULT NULL COMMENT '开始时间',
+  `completed_at` datetime DEFAULT NULL COMMENT '完成时间',
+  `duration` bigint DEFAULT 0 COMMENT '耗时(毫秒)',
+  PRIMARY KEY (`id`),
+  KEY `idx_cluster_id` (`cluster_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='K8s扩容事件表';
+
+CREATE TABLE IF NOT EXISTS `k8s_hpa_configs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `cluster_id` bigint unsigned DEFAULT NULL COMMENT '集群ID',
+  `namespace` varchar(64) DEFAULT NULL COMMENT '命名空间',
+  `deployment` varchar(128) DEFAULT NULL COMMENT 'Deployment名称',
+  `min_replicas` int DEFAULT 1 COMMENT '最小副本数',
+  `max_replicas` int DEFAULT 10 COMMENT '最大副本数',
+  `target_cpu_util` double DEFAULT 80 COMMENT '目标CPU使用率',
+  `target_mem_util` double DEFAULT 80 COMMENT '目标内存使用率',
+  `custom_metrics` text COMMENT '自定义指标JSON',
+  `scale_up_stabilization` int DEFAULT 300 COMMENT '扩容稳定窗口(秒)',
+  `scale_down_stabilization` int DEFAULT 300 COMMENT '缩容稳定窗口(秒)',
+  `enabled` tinyint DEFAULT 0 COMMENT '是否启用',
+  PRIMARY KEY (`id`),
+  KEY `idx_cluster_id` (`cluster_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='K8s HPA配置表';
+
+CREATE TABLE IF NOT EXISTS `k8s_deployment_status` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `cluster_id` bigint unsigned DEFAULT NULL COMMENT '集群ID',
+  `namespace` varchar(64) DEFAULT NULL COMMENT '命名空间',
+  `deployment` varchar(128) DEFAULT NULL COMMENT 'Deployment名称',
+  `replicas` int DEFAULT 0 COMMENT '副本数',
+  `ready_replicas` int DEFAULT 0 COMMENT '就绪副本数',
+  `updated_replicas` int DEFAULT 0 COMMENT '更新副本数',
+  `cpu_usage` double DEFAULT 0 COMMENT 'CPU使用率',
+  `memory_usage` double DEFAULT 0 COMMENT '内存使用率',
+  `cpu_request` varchar(32) DEFAULT NULL COMMENT 'CPU请求',
+  `memory_request` varchar(32) DEFAULT NULL COMMENT '内存请求',
+  `cpu_limit` varchar(32) DEFAULT NULL COMMENT 'CPU限制',
+  `memory_limit` varchar(32) DEFAULT NULL COMMENT '内存限制',
+  `hpa_enabled` tinyint DEFAULT 0 COMMENT 'HPA启用',
+  `hpa_target_cpu` double DEFAULT 0 COMMENT 'HPA目标CPU',
+  `current_replicas` int DEFAULT 0 COMMENT '当前副本数',
+  `desired_replicas` int DEFAULT 0 COMMENT '期望副本数',
+  PRIMARY KEY (`id`),
+  KEY `idx_cluster_id` (`cluster_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='K8s Deployment状态表';

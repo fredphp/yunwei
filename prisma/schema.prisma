@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 云账户 - 支持多云环境
+model CloudAccount {
+  id          String   @id @default(cuid())
+  name        String   // 账户名称
+  provider    String   // aws, azure, gcp, aliyun, kubernetes
+  accountId   String   // 云服务商账户ID
+  region      String   // 主区域
+  status      String   @default("active") // active, inactive, error
+  monthlyBudget Float? @map("monthly_budget") // 月度预算
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  resources      Resource[]
+  costRecords    CostRecord[]
+  predictions    CostPrediction[]
+  budgetAlerts   BudgetAlert[]
+  
+  @@map("cloud_accounts")
+}
+
+// 云资源
+model Resource {
+  id              String   @id @default(cuid())
+  cloudAccountId  String   @map("cloud_account_id")
+  resourceId      String   @map("resource_id") // 云服务商资源ID
+  name            String
+  type            String   // ec2, s3, rds, pod, pvc, etc.
+  category        String   // compute, storage, network, database
+  region          String
+  status          String   @default("running") // running, stopped, terminated
+  specs           String?  // JSON规格信息
+  tags            String?  // JSON标签
+  costPerHour     Float    @default(0) @map("cost_per_hour")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  cloudAccount    CloudAccount    @relation(fields: [cloudAccountId], references: [id])
+  usageRecords    ResourceUsage[]
+  wasteRecords    WasteDetection[]
+  idleRecords     IdleResource[]
+  
+  @@map("resources")
+}
+
+// 成本记录 - 每日汇总
+model CostRecord {
+  id              String   @id @default(cuid())
+  cloudAccountId  String   @map("cloud_account_id")
+  date            DateTime // 存储为DateTime，实际是日期
+  category        String   // compute, storage, network, database, other
+  service         String   // EC2, S3, RDS, etc.
+  cost            Float    // 当日成本
+  currency        String   @default("USD")
+  usageQuantity   Float    @map("usage_quantity") // 使用量
+  usageUnit       String   @map("usage_unit") // GB, hours, etc.
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  cloudAccount    CloudAccount @relation(fields: [cloudAccountId], references: [id])
+  
+  @@unique([cloudAccountId, date, category, service])
+  @@map("cost_records")
+}
+
+// 资源使用情况 - 详细监控
+model ResourceUsage {
+  id             String   @id @default(cuid())
+  resourceId     String   @map("resource_id")
+  timestamp      DateTime
+  cpuUsage       Float    @map("cpu_usage") // CPU使用率 0-100
+  memoryUsage    Float    @map("memory_usage") // 内存使用率 0-100
+  networkIn      Float    @map("network_in") // 网络入流量 MB
+  networkOut     Float    @map("network_out") // 网络出流量 MB
+  diskUsage      Float    @map("disk_usage") // 磁盘使用率 0-100
+  requestCount   Int      @default(0) @map("request_count") // 请求数
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  resource       Resource @relation(fields: [resourceId], references: [id])
+  
+  @@map("resource_usage")
+}
+
+// 浪费检测记录
+model WasteDetection {
+  id              String   @id @default(cuid())
+  resourceId      String   @map("resource_id")
+  detectedAt      DateTime @default(now()) @map("detected_at")
+  wasteType       String   @map("waste_type") // overprovisioned, unused, zombie, orphaned
+  severity        String   @default("medium") // low, medium, high, critical
+  estimatedSavings Float  @map("estimated_savings") // 预估节省金额
+  reason          String   // 检测原因
+  recommendation  String   // 优化建议
+  status          String   @default("open") // open, acknowledged, resolved, ignored
+  resolvedAt      DateTime? @map("resolved_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  resource        Resource @relation(fields: [resourceId], references: [id])
+  
+  @@map("waste_detections")
+}
+
+// 闲置资源
+model IdleResource {
+  id              String   @id @default(cuid())
+  resourceId      String   @map("resource_id")
+  detectedAt      DateTime @default(now()) @map("detected_at")
+  idleType        String   @map("idle_type") // low_cpu, low_network, no_requests, stopped_long
+  avgCpuUsage     Float    @map("avg_cpu_usage") // 平均CPU使用率
+  avgMemoryUsage  Float    @map("avg_memory_usage") // 平均内存使用率
+  idleDays        Int      @map("idle_days") // 闲置天数
+  monthlyCost     Float    @map("monthly_cost") // 月度成本
+  potentialSavings Float  @map("potential_savings") // 潜在节省
+  recommendation  String   // 建议: terminate, downsize, schedule_stop
+  status          String   @default("active") // active, reviewing, actioned, dismissed
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  resource        Resource @relation(fields: [resourceId], references: [id])
+  
+  @@map("idle_resources")
+}
+
+// 成本预测
+model CostPrediction {
+  id              String   @id @default(cuid())
+  cloudAccountId  String   @map("cloud_account_id")
+  predictionMonth String   @map("prediction_month") // YYYY-MM
+  predictedCost   Float    @map("predicted_cost")
+  confidence      Float    // 置信度 0-1
+  trend           String   // increasing, decreasing, stable
+  factors         String?  // JSON影响因素
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  cloudAccount    CloudAccount @relation(fields: [cloudAccountId], references: [id])
+  
+  @@unique([cloudAccountId, predictionMonth])
+  @@map("cost_predictions")
+}
+
+// 预算和告警
+model BudgetAlert {
+  id              String   @id @default(cuid())
+  cloudAccountId  String   @map("cloud_account_id")
+  alertType       String   @map("alert_type") // threshold, anomaly, forecast
+  threshold       Float    // 阈值百分比
+  currentSpend    Float    @map("current_spend")
+  budgetAmount    Float    @map("budget_amount")
+  message         String
+  triggeredAt     DateTime @default(now()) @map("triggered_at")
+  acknowledged    Boolean  @default(false)
+  acknowledgedAt  DateTime? @map("acknowledged_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  cloudAccount    CloudAccount @relation(fields: [cloudAccountId], references: [id])
+  
+  @@map("budget_alerts")
+}
