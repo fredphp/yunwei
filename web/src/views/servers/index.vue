@@ -149,14 +149,27 @@
         <el-form-item label="认证方式" prop="authType">
           <el-radio-group v-model="serverForm.authType">
             <el-radio value="password">密码</el-radio>
-            <el-radio value="key">密钥</el-radio>
+            <el-radio value="sshKey">SSH 密钥</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="密码" prop="password" v-if="serverForm.authType === 'password'">
           <el-input v-model="serverForm.password" type="password" show-password />
         </el-form-item>
-        <el-form-item label="私钥" prop="privateKey" v-else>
-          <el-input v-model="serverForm.privateKey" type="textarea" :rows="5" placeholder="SSH 私钥" />
+        <el-form-item label="SSH 密钥" prop="sshKeyId" v-if="serverForm.authType === 'sshKey'">
+          <div class="ssh-key-selector">
+            <el-select v-model="serverForm.sshKeyId" placeholder="选择 SSH 密钥" style="width: 100%;">
+              <el-option v-for="key in sshKeys" :key="key.id" :label="`${key.name} (${key.filename})`" :value="key.id">
+                <div style="display: flex; justify-content: space-between;">
+                  <span>{{ key.name }}</span>
+                  <span style="color: #999; font-size: 12px;">{{ key.filename }}</span>
+                </div>
+              </el-option>
+            </el-select>
+            <el-button type="primary" link @click="showAddSshKeyDialog = true" style="margin-left: 10px;">
+              <el-icon><Plus /></el-icon>
+              添加密钥
+            </el-button>
+          </div>
         </el-form-item>
         <el-form-item label="分组" prop="groupId">
           <el-select v-model="serverForm.groupId" placeholder="选择分组" clearable>
@@ -172,6 +185,59 @@
       <template #footer>
         <el-button @click="showAddDialog = false">取消</el-button>
         <el-button type="primary" @click="saveServer">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 添加 SSH 密钥对话框 -->
+    <el-dialog v-model="showAddSshKeyDialog" title="添加 SSH 密钥" width="550px">
+      <el-form :model="sshKeyForm" label-width="100px" ref="sshKeyFormRef">
+        <el-form-item label="密钥名称" required>
+          <el-input v-model="sshKeyForm.name" placeholder="例如：生产服务器密钥" />
+        </el-form-item>
+        <el-form-item label="上传文件">
+          <el-upload
+            ref="pemUploadRef"
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".pem,.key"
+            :on-change="handlePemFileChange"
+          >
+            <template #trigger>
+              <el-button type="primary">
+                <el-icon><Upload /></el-icon>
+                选择 .pem 文件
+              </el-button>
+            </template>
+            <template #tip>
+              <div class="el-upload__tip" style="margin-top: 8px;">
+                支持 .pem 或 .key 格式的 SSH 私钥文件
+              </div>
+            </template>
+          </el-upload>
+          <div v-if="sshKeyForm.filename" class="file-info">
+            <el-icon><Document /></el-icon>
+            <span>{{ sshKeyForm.filename }}</span>
+            <el-button type="danger" link @click="clearPemFile">清除</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item label="或输入内容">
+          <el-input
+            v-model="sshKeyForm.keyContent"
+            type="textarea"
+            :rows="6"
+            placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----"
+          />
+        </el-form-item>
+        <el-form-item label="密钥密码">
+          <el-input v-model="sshKeyForm.passphrase" type="password" placeholder="如果有密码的话" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="sshKeyForm.description" placeholder="密钥描述（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddSshKeyDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveSshKey" :loading="sshKeyLoading">保存</el-button>
       </template>
     </el-dialog>
 
@@ -368,12 +434,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Monitor, CircleCheck, CircleClose, Warning, ArrowDown } from '@element-plus/icons-vue'
+import { Plus, Search, Monitor, CircleCheck, CircleClose, Warning, ArrowDown, Upload, Document, Key } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const loading = ref(false)
 const servers = ref([])
 const groups = ref([])
+const sshKeys = ref<any[]>([])
 const tags = ref(['production', 'development', 'staging', 'database', 'web', 'api'])
 const searchKeyword = ref('')
 const currentPage = ref(1)
@@ -386,11 +453,13 @@ const showCommandDialog = ref(false)
 const showLogsDialog = ref(false)
 const showContainersDialog = ref(false)
 const showPortsDialog = ref(false)
+const showAddSshKeyDialog = ref(false)
 const editingServer = ref(null)
 const currentServer = ref(null)
 const aiResult = ref<any>(null)
 const commandResult = ref('')
 const commandLoading = ref(false)
+const sshKeyLoading = ref(false)
 
 // 日志相关
 const logsLoading = ref(false)
@@ -424,8 +493,17 @@ const serverForm = ref({
   authType: 'password',
   password: '',
   privateKey: '',
+  sshKeyId: null as number | null,
   groupId: '',
   tags: []
+})
+
+const sshKeyForm = ref({
+  name: '',
+  filename: '',
+  keyContent: '',
+  passphrase: '',
+  description: ''
 })
 
 const commandForm = ref({
@@ -491,13 +569,105 @@ const fetchGroups = async () => {
   }
 }
 
+// 获取 SSH 密钥列表
+const fetchSshKeys = async () => {
+  try {
+    const res = await request.get('/ssh-keys')
+    sshKeys.value = res.data?.list || []
+  } catch (error) {
+    console.error('获取 SSH 密钥列表失败', error)
+  }
+}
+
+// 处理 .pem 文件上传
+const handlePemFileChange = (file: any) => {
+  const rawFile = file.raw
+  if (!rawFile) return
+  
+  // 验证文件扩展名
+  if (!rawFile.name.endsWith('.pem') && !rawFile.name.endsWith('.key')) {
+    ElMessage.error('请上传 .pem 或 .key 格式的文件')
+    return
+  }
+  
+  // 读取文件内容
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    const content = event.target?.result as string
+    sshKeyForm.value.filename = rawFile.name
+    sshKeyForm.value.keyContent = content
+    // 自动填充名称
+    if (!sshKeyForm.value.name) {
+      sshKeyForm.value.name = rawFile.name.replace(/\.(pem|key)$/, '')
+    }
+  }
+  reader.readAsText(rawFile)
+}
+
+// 清除 .pem 文件
+const clearPemFile = () => {
+  sshKeyForm.value.filename = ''
+  sshKeyForm.value.keyContent = ''
+}
+
+// 保存 SSH 密钥
+const saveSshKey = async () => {
+  if (!sshKeyForm.value.name) {
+    ElMessage.error('请输入密钥名称')
+    return
+  }
+  if (!sshKeyForm.value.keyContent) {
+    ElMessage.error('请上传 .pem 文件或输入密钥内容')
+    return
+  }
+  
+  sshKeyLoading.value = true
+  try {
+    await request.post('/ssh-keys', sshKeyForm.value)
+    ElMessage.success('SSH 密钥添加成功')
+    showAddSshKeyDialog.value = false
+    // 重置表单
+    sshKeyForm.value = {
+      name: '',
+      filename: '',
+      keyContent: '',
+      passphrase: '',
+      description: ''
+    }
+    // 刷新密钥列表
+    await fetchSshKeys()
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.msg || '添加失败')
+  } finally {
+    sshKeyLoading.value = false
+  }
+}
+
 const saveServer = async () => {
   try {
+    // 构建请求数据，映射字段名
+    const data: any = {
+      name: serverForm.value.name,
+      host: serverForm.value.ip,  // 前端使用 ip，后端使用 host
+      port: serverForm.value.port,
+      user: serverForm.value.username,  // 前端使用 username，后端使用 user
+      authType: serverForm.value.authType,
+      groupId: serverForm.value.groupId,
+      tags: serverForm.value.tags
+    }
+    
+    // 根据认证方式添加认证信息
+    if (serverForm.value.authType === 'password') {
+      data.password = serverForm.value.password
+    } else if (serverForm.value.authType === 'sshKey') {
+      data.sshKeyId = serverForm.value.sshKeyId
+    }
+    
     if (editingServer.value) {
-      await request.put(`/servers/${editingServer.value.id}`, serverForm.value)
+      await request.put(`/servers/${editingServer.value.id}`, data)
       ElMessage.success('更新成功')
     } else {
-      await request.post('/servers', serverForm.value)
+      await request.post('/servers', data)
       ElMessage.success('添加成功')
     }
     showAddDialog.value = false
@@ -510,7 +680,18 @@ const saveServer = async () => {
 
 const editServer = (server: any) => {
   editingServer.value = server
-  serverForm.value = { ...server }
+  serverForm.value = {
+    name: server.name || '',
+    ip: server.host || server.ip || '',
+    port: server.port || 22,
+    username: server.user || server.username || 'root',
+    authType: server.authType || 'password',
+    password: '',
+    privateKey: '',
+    sshKeyId: server.sshKeyId || server.sshKey?.id || null,
+    groupId: server.groupId || '',
+    tags: server.tags || []
+  }
   showAddDialog.value = true
 }
 
@@ -725,6 +906,7 @@ const resetForm = () => {
     authType: 'password',
     password: '',
     privateKey: '',
+    sshKeyId: null,
     groupId: '',
     tags: []
   }
@@ -784,6 +966,7 @@ const formatBytes = (bytes: number) => {
 onMounted(() => {
   fetchServers()
   fetchGroups()
+  fetchSshKeys()
 })
 </script>
 
@@ -888,5 +1071,26 @@ onMounted(() => {
 .toolbar {
   display: flex;
   align-items: center;
+}
+
+.ssh-key-selector {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.file-info .el-icon {
+  color: #409eff;
 }
 </style>

@@ -129,6 +129,24 @@ func InitRouter(r *gin.Engine) {
                         // SSH 测试 - 需要 server:ssh 权限
                         authGroup.POST("/ssh/test", middleware.RequirePermission("server:ssh"), server.TestSSH)
 
+                        // ==================== SSH 密钥管理 ====================
+                        sshKeys := authGroup.Group("/ssh-keys")
+                        {
+                                // 查看权限
+                                sshKeys.GET("", server.GetSshKeyList)
+                                sshKeys.GET("/:id", server.GetSshKey)
+
+                                // 添加权限 (管理员)
+                                sshKeys.POST("", middleware.RequirePermission("server:add"), server.AddSshKey)
+                                sshKeys.POST("/upload", middleware.RequirePermission("server:add"), server.UploadSshKey)
+
+                                // 编辑权限 (管理员)
+                                sshKeys.PUT("/:id", middleware.RequirePermission("server:edit"), server.UpdateSshKey)
+
+                                // 删除权限 (管理员)
+                                sshKeys.DELETE("/:id", middleware.RequirePermission("server:delete"), server.DeleteSshKey)
+                        }
+
                         // 服务器分组
                         // 权限说明：
                         // - 查看分组: server_group:view

@@ -20,7 +20,7 @@ import (
 func GetServerList(c *gin.Context) {
         var servers []server.Server
         
-        query := global.DB.Model(&server.Server{})
+        query := global.DB.Model(&server.Server{}).Preload("SshKey")
         
         // 搜索条件
         if name := c.Query("name"); name != "" {
@@ -58,7 +58,7 @@ func GetServer(c *gin.Context) {
         }
 
         var srv server.Server
-        if err := global.DB.First(&srv, id).Error; err != nil {
+        if err := global.DB.Preload("SshKey").First(&srv, id).Error; err != nil {
                 response.FailWithMessage("服务器不存在", c)
                 return
         }
@@ -74,8 +74,10 @@ func AddServer(c *gin.Context) {
                 Host        string `json:"host" binding:"required"`
                 Port        int    `json:"port"`
                 User        string `json:"user"`
+                AuthType    string `json:"authType"`
                 Password    string `json:"password"`
                 PrivateKey  string `json:"privateKey"`
+                SshKeyID    *uint  `json:"sshKeyId"`
                 GroupID     uint   `json:"groupId"`
                 Description string `json:"description"`
         }
@@ -89,14 +91,25 @@ func AddServer(c *gin.Context) {
                 req.Port = 22
         }
 
+        // 默认认证方式
+        if req.AuthType == "" {
+                if req.SshKeyID != nil {
+                        req.AuthType = "sshKey"
+                } else {
+                        req.AuthType = "password"
+                }
+        }
+
         srv := server.Server{
                 Name:        req.Name,
                 Hostname:    req.Hostname,
                 Host:        req.Host,
                 Port:        req.Port,
                 User:        req.User,
+                AuthType:    req.AuthType,
                 Password:    req.Password,
                 PrivateKey:  req.PrivateKey,
+                SshKeyID:    req.SshKeyID,
                 GroupID:     req.GroupID,
                 Description: req.Description,
                 Status:      "pending",
@@ -105,6 +118,11 @@ func AddServer(c *gin.Context) {
         if err := global.DB.Create(&srv).Error; err != nil {
                 response.FailWithMessage("创建失败: "+err.Error(), c)
                 return
+        }
+
+        // 如果关联了 SSH 密钥，加载密钥信息
+        if srv.SshKeyID != nil {
+                global.DB.Preload("SshKey").First(&srv, srv.ID)
         }
 
         response.OkWithData(srv, c)
