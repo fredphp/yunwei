@@ -2,6 +2,7 @@ package global
 
 import (
         "fmt"
+        "strings"
         "time"
         "yunwei/config"
         "yunwei/model/agent"
@@ -155,24 +156,39 @@ func createUniqueIndexes() {
         // 使用 ALTER TABLE ADD UNIQUE INDEX 并忽略重复错误
         
         // 菜单表：同一父菜单下名称唯一
-        if err := DB.Exec("ALTER TABLE sys_menus ADD UNIQUE INDEX idx_menu_name_parent (name, parent_id)").Error; err != nil {
-                // 忽略已存在的错误
+        err := DB.Exec("ALTER TABLE sys_menus ADD UNIQUE INDEX idx_menu_name_parent (name, parent_id)").Error
+        if err != nil && !isDuplicateKeyError(err) {
+                fmt.Printf("创建索引 idx_menu_name_parent 失败: %v\n", err)
         }
         
         // API表：路径和方法唯一
-        if err := DB.Exec("ALTER TABLE sys_apis ADD UNIQUE INDEX idx_api_path_method (path, method)").Error; err != nil {
-                // 忽略已存在的错误
+        err = DB.Exec("ALTER TABLE sys_apis ADD UNIQUE INDEX idx_api_path_method (path, method)").Error
+        if err != nil && !isDuplicateKeyError(err) {
+                fmt.Printf("创建索引 idx_api_path_method 失败: %v\n", err)
         }
         
         // 角色-API关联：角色和API唯一
-        if err := DB.Exec("ALTER TABLE sys_role_apis ADD UNIQUE INDEX idx_role_api (role_id, api_id)").Error; err != nil {
-                // 忽略已存在的错误
+        err = DB.Exec("ALTER TABLE sys_role_apis ADD UNIQUE INDEX idx_role_api (role_id, api_id)").Error
+        if err != nil && !isDuplicateKeyError(err) {
+                fmt.Printf("创建索引 idx_role_api 失败: %v\n", err)
         }
         
         // 角色-菜单关联：角色和菜单唯一
-        if err := DB.Exec("ALTER TABLE sys_role_menus ADD UNIQUE INDEX idx_role_menu (role_id, menu_id)").Error; err != nil {
-                // 忽略已存在的错误
+        err = DB.Exec("ALTER TABLE sys_role_menus ADD UNIQUE INDEX idx_role_menu (role_id, menu_id)").Error
+        if err != nil && !isDuplicateKeyError(err) {
+                fmt.Printf("创建索引 idx_role_menu 失败: %v\n", err)
         }
+}
+
+// isDuplicateKeyError 检查是否是重复键错误
+func isDuplicateKeyError(err error) bool {
+        if err == nil {
+                return false
+        }
+        errMsg := err.Error()
+        return strings.Contains(errMsg, "Duplicate key name") ||
+               strings.Contains(errMsg, "duplicate") ||
+               strings.Contains(errMsg, "already exists")
 }
 
 // runMigrations 执行SQL数据迁移
