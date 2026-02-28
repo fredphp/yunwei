@@ -8,9 +8,9 @@ import (
         "yunwei/model/ha"
         "yunwei/model/kubernetes"
         "yunwei/model/scheduler"
+        "yunwei/model/security"
         "yunwei/model/system"
         "yunwei/model/tenant"
-        "yunwei/service/security"
         "yunwei/utils"
 
         "go.uber.org/zap"
