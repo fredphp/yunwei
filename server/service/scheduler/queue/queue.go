@@ -31,7 +31,6 @@ type MemoryQueueBackend struct {
 type PriorityQueue struct {
         items []*QueueItem
         mu    sync.Mutex
-        cond  *sync.Cond
 }
 
 // QueueItem 队列项
@@ -94,7 +93,6 @@ func (b *MemoryQueueBackend) getOrCreateQueue(queueName string) *PriorityQueue {
                 pq := &PriorityQueue{
                         items: make([]*QueueItem, 0),
                 }
-                pq.cond = sync.NewCond(&pq.mu)
                 b.queues[queueName] = pq
         }
         return b.queues[queueName]
@@ -113,7 +111,6 @@ func (b *MemoryQueueBackend) Enqueue(queueName string, task *schedulerModel.Task
         }
 
         pq.items = append(pq.items, item)
-        pq.cond.Signal()
 
         // 更新数据库状态
         global.DB.Model(&schedulerModel.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
@@ -126,42 +123,38 @@ func (b *MemoryQueueBackend) Enqueue(queueName string, task *schedulerModel.Task
 
 // Dequeue 出队
 func (b *MemoryQueueBackend) Dequeue(queueName string, timeout time.Duration) (*schedulerModel.Task, error) {
-        pq := b.getOrCreateQueue(queueName)
+        deadline := time.Now().Add(timeout)
 
-        pq.mu.Lock()
-        defer pq.mu.Unlock()
+        for {
+                pq := b.getOrCreateQueue(queueName)
 
-        if len(pq.items) == 0 {
-                done := make(chan struct{})
-                go func() {
-                        pq.cond.Wait()
-                        close(done)
-                }()
+                pq.mu.Lock()
+                if len(pq.items) > 0 {
+                        // 找到最高优先级的任务
+                        var highestIdx int
+                        highestPriority := -1
+                        for i, item := range pq.items {
+                                if item.Priority > highestPriority {
+                                        highestPriority = item.Priority
+                                        highestIdx = i
+                                }
+                        }
 
-                select {
-                case <-done:
-                case <-time.After(timeout):
+                        item := pq.items[highestIdx]
+                        pq.items = append(pq.items[:highestIdx], pq.items[highestIdx+1:]...)
+                        pq.mu.Unlock()
+                        return item.Task, nil
+                }
+                pq.mu.Unlock()
+
+                // 检查是否超时
+                if time.Now().After(deadline) {
                         return nil, fmt.Errorf("timeout")
                 }
+
+                // 短暂休眠后重试
+                time.Sleep(100 * time.Millisecond)
         }
-
-        if len(pq.items) == 0 {
-                return nil, fmt.Errorf("queue empty")
-        }
-
-        var highestIdx int
-        highestPriority := -1
-        for i, item := range pq.items {
-                if item.Priority > highestPriority {
-                        highestPriority = item.Priority
-                        highestIdx = i
-                }
-        }
-
-        item := pq.items[highestIdx]
-        pq.items = append(pq.items[:highestIdx], pq.items[highestIdx+1:]...)
-
-        return item.Task, nil
 }
 
 // Ack 确认任务
