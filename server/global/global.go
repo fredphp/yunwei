@@ -170,11 +170,11 @@ func runMigrations() {
         // 1. server/migrations - 服务端专用迁移
         // 2. sql/migrations - 通用SQL迁移
         migrationsDirs := []string{
-                "migrations",      // server/migrations
+                "migrations",        // server/migrations
                 "../sql/migrations", // sql/migrations (相对于server目录)
         }
         
-        mm := migration.NewMigrationManagerWithDirs(migrationsDirs)
+        mm := migration.NewMigrationManagerWithDirs(DB, migrationsDirs)
         if err := mm.Run(); err != nil {
                 fmt.Printf("数据迁移执行失败: %v\n", err)
         }

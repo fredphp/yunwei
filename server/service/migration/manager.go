@@ -10,7 +10,6 @@ import (
         "sort"
         "strings"
         "time"
-        "yunwei/global"
         "yunwei/model/system"
 
         "gorm.io/gorm"
@@ -30,17 +29,17 @@ type MigrationManager struct {
 }
 
 // NewMigrationManager 创建迁移管理器
-func NewMigrationManager(migrationsDir string) *MigrationManager {
+func NewMigrationManager(db *gorm.DB, migrationsDir string) *MigrationManager {
         return &MigrationManager{
-                db:             global.DB,
+                db:             db,
                 migrationsDirs: []string{migrationsDir},
         }
 }
 
 // NewMigrationManagerWithDirs 创建支持多目录的迁移管理器
-func NewMigrationManagerWithDirs(migrationsDirs []string) *MigrationManager {
+func NewMigrationManagerWithDirs(db *gorm.DB, migrationsDirs []string) *MigrationManager {
         return &MigrationManager{
-                db:             global.DB,
+                db:             db,
                 migrationsDirs: migrationsDirs,
         }
 }
