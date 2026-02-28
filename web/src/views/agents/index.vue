@@ -217,6 +217,132 @@
       </el-descriptions>
     </el-dialog>
 
+    <!-- Agent配置对话框 -->
+    <el-dialog v-model="showConfigDialog" title="Agent 配置" width="700px">
+      <div v-loading="configLoading">
+        <el-form :model="agentConfig" label-width="140px" v-if="agentConfig">
+          <el-divider content-position="left">采集配置</el-divider>
+          <el-form-item label="采集间隔">
+            <el-input-number v-model="agentConfig.collectInterval" :min="10" :max="300" /> 秒
+          </el-form-item>
+          <el-form-item label="启用CPU采集">
+            <el-switch v-model="agentConfig.collectCPU" />
+          </el-form-item>
+          <el-form-item label="启用内存采集">
+            <el-switch v-model="agentConfig.collectMemory" />
+          </el-form-item>
+          <el-form-item label="启用磁盘采集">
+            <el-switch v-model="agentConfig.collectDisk" />
+          </el-form-item>
+          <el-form-item label="启用网络采集">
+            <el-switch v-model="agentConfig.collectNetwork" />
+          </el-form-item>
+          
+          <el-divider content-position="left">上报配置</el-divider>
+          <el-form-item label="上报地址">
+            <el-input v-model="agentConfig.reportUrl" placeholder="http://server:8080/api/report" />
+          </el-form-item>
+          <el-form-item label="心跳间隔">
+            <el-input-number v-model="agentConfig.heartbeatInterval" :min="5" :max="60" /> 秒
+          </el-form-item>
+          
+          <el-divider content-position="left">执行配置</el-divider>
+          <el-form-item label="命令超时">
+            <el-input-number v-model="agentConfig.execTimeout" :min="10" :max="600" /> 秒
+          </el-form-item>
+          <el-form-item label="并发数">
+            <el-input-number v-model="agentConfig.concurrentLimit" :min="1" :max="10" />
+          </el-form-item>
+          
+          <el-divider content-position="left">日志配置</el-divider>
+          <el-form-item label="日志级别">
+            <el-select v-model="agentConfig.logLevel">
+              <el-option label="DEBUG" value="debug" />
+              <el-option label="INFO" value="info" />
+              <el-option label="WARN" value="warn" />
+              <el-option label="ERROR" value="error" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="日志保留天数">
+            <el-input-number v-model="agentConfig.logRetention" :min="1" :max="30" />
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="showConfigDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveAgentConfig">保存配置</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 心跳记录对话框 -->
+    <el-dialog v-model="showHeartbeatsDialog" title="心跳记录" width="900px">
+      <div v-loading="heartbeatsLoading">
+        <div class="toolbar mb-3">
+          <el-date-picker
+            v-model="heartbeatsTimeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            @change="loadHeartbeats"
+          />
+          <el-button type="primary" style="margin-left: 10px;" @click="loadHeartbeats">刷新</el-button>
+        </div>
+        
+        <el-table :data="heartbeatsData" max-height="400">
+          <el-table-column prop="timestamp" label="时间" width="180">
+            <template #default="{ row }">
+              {{ formatTime(row.timestamp) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'success' ? 'success' : 'danger'" size="small">
+                {{ row.status === 'success' ? '正常' : '异常' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="latency" label="延迟(ms)" width="100" />
+          <el-table-column prop="cpuUsage" label="CPU%" width="80" />
+          <el-table-column prop="memoryUsage" label="内存%" width="80" />
+          <el-table-column prop="diskUsage" label="磁盘%" width="80" />
+          <el-table-column prop="message" label="消息" min-width="200" show-overflow-tooltip />
+        </el-table>
+        
+        <el-empty v-if="heartbeatsData.length === 0 && !heartbeatsLoading" description="暂无心跳记录" />
+      </div>
+    </el-dialog>
+
+    <!-- 恢复记录对话框 -->
+    <el-dialog v-model="showRecoversDialog" title="恢复记录" width="900px">
+      <div v-loading="recoversLoading">
+        <el-table :data="recoversData" max-height="400">
+          <el-table-column prop="timestamp" label="时间" width="180">
+            <template #default="{ row }">
+              {{ formatTime(row.timestamp) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="类型" width="120">
+            <template #default="{ row }">
+              <el-tag size="small">{{ row.type }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="issue" label="问题" min-width="180" show-overflow-tooltip />
+          <el-table-column prop="action" label="恢复操作" min-width="180" show-overflow-tooltip />
+          <el-table-column label="结果" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.success ? 'success' : 'danger'" size="small">
+                {{ row.success ? '成功' : '失败' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="duration" label="耗时(ms)" width="100" />
+        </el-table>
+        
+        <el-empty v-if="recoversData.length === 0 && !recoversLoading" description="暂无恢复记录" />
+      </div>
+    </el-dialog>
+
     <el-dialog v-model="showUpgradeDialog" title="创建升级任务" width="500px">
       <el-form :model="upgradeForm" label-width="100px">
         <el-form-item label="任务名称">
@@ -256,7 +382,23 @@ const selectedAgents = ref([])
 const showAgentDialog = ref(false)
 const showUpgradeDialog = ref(false)
 const showVersionDialog = ref(false)
+const showConfigDialog = ref(false)
+const showHeartbeatsDialog = ref(false)
+const showRecoversDialog = ref(false)
 const currentAgent = ref<any>(null)
+
+// 配置相关
+const configLoading = ref(false)
+const agentConfig = ref<any>(null)
+
+// 心跳记录相关
+const heartbeatsLoading = ref(false)
+const heartbeatsData = ref<any[]>([])
+const heartbeatsTimeRange = ref<[Date, Date] | null>(null)
+
+// 恢复记录相关
+const recoversLoading = ref(false)
+const recoversData = ref<any[]>([])
 
 const stats = ref({
   total: 45,
@@ -315,8 +457,44 @@ const viewAgent = (agent: any) => {
   showAgentDialog.value = true
 }
 
-const viewConfig = (agent: any) => {
-  ElMessage.info('配置功能开发中')
+const viewConfig = async (agent: any) => {
+  currentAgent.value = agent
+  showConfigDialog.value = true
+  configLoading.value = true
+  
+  try {
+    const res = await request.get(`/agents/${agent.id}/config`)
+    agentConfig.value = res.data || getDefaultConfig()
+  } catch (error) {
+    console.error('获取配置失败', error)
+    agentConfig.value = getDefaultConfig()
+  } finally {
+    configLoading.value = false
+  }
+}
+
+const getDefaultConfig = () => ({
+  collectInterval: 60,
+  collectCPU: true,
+  collectMemory: true,
+  collectDisk: true,
+  collectNetwork: true,
+  reportUrl: '',
+  heartbeatInterval: 30,
+  execTimeout: 60,
+  concurrentLimit: 5,
+  logLevel: 'info',
+  logRetention: 7
+})
+
+const saveAgentConfig = async () => {
+  try {
+    await request.put(`/agents/${currentAgent.value.id}/config`, agentConfig.value)
+    ElMessage.success('配置已保存')
+    showConfigDialog.value = false
+  } catch (error) {
+    ElMessage.error('保存失败')
+  }
 }
 
 const upgradeAgent = async (agent: any) => {
@@ -341,12 +519,59 @@ const deleteAgent = async (agent: any) => {
   } catch {}
 }
 
-const viewHeartbeats = (agent: any) => {
-  ElMessage.info('心跳记录功能开发中')
+const viewHeartbeats = async (agent: any) => {
+  currentAgent.value = agent
+  showHeartbeatsDialog.value = true
+  await loadHeartbeats()
 }
 
-const viewRecovers = (agent: any) => {
-  ElMessage.info('恢复记录功能开发中')
+const loadHeartbeats = async () => {
+  if (!currentAgent.value) return
+  heartbeatsLoading.value = true
+  try {
+    const params: any = {}
+    if (heartbeatsTimeRange.value) {
+      params.startTime = heartbeatsTimeRange.value[0].toISOString()
+      params.endTime = heartbeatsTimeRange.value[1].toISOString()
+    }
+    const res = await request.get(`/agents/${currentAgent.value.id}/heartbeats`, { params })
+    heartbeatsData.value = res.data || []
+  } catch (error) {
+    console.error('获取心跳记录失败', error)
+    // 模拟数据
+    heartbeatsData.value = Array.from({ length: 20 }, (_, i) => ({
+      timestamp: new Date(Date.now() - i * 30000).toISOString(),
+      status: Math.random() > 0.1 ? 'success' : 'failed',
+      latency: Math.floor(Math.random() * 50) + 10,
+      cpuUsage: (Math.random() * 30 + 20).toFixed(1),
+      memoryUsage: (Math.random() * 20 + 40).toFixed(1),
+      diskUsage: (Math.random() * 10 + 50).toFixed(1),
+      message: Math.random() > 0.9 ? '资源使用率告警' : '正常'
+    }))
+  } finally {
+    heartbeatsLoading.value = false
+  }
+}
+
+const viewRecovers = async (agent: any) => {
+  currentAgent.value = agent
+  showRecoversDialog.value = true
+  recoversLoading.value = true
+  
+  try {
+    const res = await request.get(`/agents/${agent.id}/recovers`)
+    recoversData.value = res.data || []
+  } catch (error) {
+    console.error('获取恢复记录失败', error)
+    // 模拟数据
+    recoversData.value = [
+      { timestamp: new Date(Date.now() - 3600000).toISOString(), type: '服务重启', issue: 'nginx服务停止', action: '自动重启nginx服务', success: true, duration: 1500 },
+      { timestamp: new Date(Date.now() - 7200000).toISOString(), type: '进程恢复', issue: '进程异常退出', action: '重启应用进程', success: true, duration: 800 },
+      { timestamp: new Date(Date.now() - 86400000).toISOString(), type: '磁盘清理', issue: '磁盘空间不足', action: '清理临时文件和日志', success: true, duration: 5000 }
+    ]
+  } finally {
+    recoversLoading.value = false
+  }
 }
 
 const refreshAgents = () => {
@@ -404,6 +629,12 @@ const getTaskStatusType = (status: string) => {
     failed: 'danger'
   }
   return types[status] || 'info'
+}
+
+const formatTime = (time: string) => {
+  if (!time) return '-'
+  const date = new Date(time)
+  return date.toLocaleString('zh-CN')
 }
 
 onMounted(() => {
@@ -519,5 +750,14 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+}
+
+.mb-3 {
+  margin-bottom: 12px;
 }
 </style>

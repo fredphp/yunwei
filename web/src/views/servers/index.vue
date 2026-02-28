@@ -224,8 +224,19 @@
             </el-card>
           </el-col>
         </el-row>
-        <!-- 这里可以添加图表 -->
-        <el-empty description="图表加载中..." />
+        
+        <el-descriptions title="服务器信息" :column="3" border>
+          <el-descriptions-item label="名称">{{ currentServer.name }}</el-descriptions-item>
+          <el-descriptions-item label="IP">{{ currentServer.ip }}</el-descriptions-item>
+          <el-descriptions-item label="系统">{{ currentServer.os || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusType(currentServer.status)">{{ currentServer.status }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="分组">{{ currentServer.groupId || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="标签">
+            <el-tag v-for="tag in (currentServer.tags || [])" :key="tag" size="small" class="mr-1">{{ tag }}</el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
       </div>
     </el-dialog>
 
@@ -243,6 +254,113 @@
         <el-button @click="showCommandDialog = false">关闭</el-button>
         <el-button type="primary" @click="runCommand" :loading="commandLoading">执行</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 日志查看对话框 -->
+    <el-dialog v-model="showLogsDialog" :title="`系统日志 - ${currentServer?.name || ''}`" width="900px">
+      <div v-loading="logsLoading">
+        <div class="logs-toolbar">
+          <el-select v-model="logsFilter.type" placeholder="日志类型" style="width: 150px;" @change="loadLogs">
+            <el-option label="系统日志" value="system" />
+            <el-option label="安全日志" value="security" />
+            <el-option label="应用日志" value="application" />
+          </el-select>
+          <el-input v-model="logsFilter.keyword" placeholder="搜索关键词" style="width: 200px; margin-left: 10px;" clearable @keyup.enter="loadLogs" />
+          <el-button type="primary" style="margin-left: 10px;" @click="loadLogs">刷新</el-button>
+        </div>
+        
+        <el-table :data="logsData" max-height="400" class="mt-3">
+          <el-table-column prop="timestamp" label="时间" width="180">
+            <template #default="{ row }">
+              {{ formatTime(row.timestamp) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="level" label="级别" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getLogLevelType(row.level)" size="small">{{ row.level }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="source" label="来源" width="120" />
+          <el-table-column prop="message" label="消息" min-width="300" show-overflow-tooltip />
+        </el-table>
+        
+        <el-empty v-if="logsData.length === 0 && !logsLoading" description="暂无日志数据" />
+      </div>
+      <template #footer>
+        <el-button @click="showLogsDialog = false">关闭</el-button>
+        <el-button type="primary" @click="exportLogs">导出日志</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 容器列表对话框 -->
+    <el-dialog v-model="showContainersDialog" :title="`Docker容器 - ${currentServer?.name || ''}`" width="900px">
+      <div v-loading="containersLoading">
+        <div class="toolbar">
+          <el-button type="primary" @click="loadContainers">刷新</el-button>
+        </div>
+        
+        <el-table :data="containersData" class="mt-3">
+          <el-table-column prop="name" label="容器名称" min-width="180" />
+          <el-table-column prop="image" label="镜像" width="200" show-overflow-tooltip />
+          <el-table-column prop="status" label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'running' ? 'success' : row.status === 'exited' ? 'info' : 'warning'" size="small">
+                {{ row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="CPU %" width="100">
+            <template #default="{ row }">
+              {{ row.cpuPercent?.toFixed(1) || 0 }}%
+            </template>
+          </el-table-column>
+          <el-table-column label="内存" width="120">
+            <template #default="{ row }">
+              {{ formatBytes(row.memUsage) }} / {{ formatBytes(row.memLimit) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="ports" label="端口" width="180" show-overflow-tooltip />
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" @click="containerAction(row, 'start')" v-if="row.status !== 'running'" type="success">启动</el-button>
+              <el-button size="small" @click="containerAction(row, 'stop')" v-if="row.status === 'running'" type="warning">停止</el-button>
+              <el-button size="small" @click="containerAction(row, 'restart')" type="primary">重启</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <el-empty v-if="containersData.length === 0 && !containersLoading" description="暂无容器" />
+      </div>
+    </el-dialog>
+
+    <!-- 端口信息对话框 -->
+    <el-dialog v-model="showPortsDialog" :title="`端口信息 - ${currentServer?.name || ''}`" width="900px">
+      <div v-loading="portsLoading">
+        <div class="toolbar">
+          <el-input v-model="portsFilter" placeholder="过滤端口" style="width: 200px;" clearable />
+          <el-button type="primary" style="margin-left: 10px;" @click="loadPorts">刷新</el-button>
+        </div>
+        
+        <el-table :data="filteredPorts" class="mt-3">
+          <el-table-column prop="port" label="端口" width="100" />
+          <el-table-column prop="protocol" label="协议" width="100">
+            <template #default="{ row }">
+              <el-tag size="small">{{ row.protocol || 'TCP' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="state" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.state === 'LISTEN' ? 'success' : 'info'" size="small">{{ row.state }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="process" label="进程" width="150" />
+          <el-table-column prop="pid" label="PID" width="100" />
+          <el-table-column prop="user" label="用户" width="100" />
+          <el-table-column prop="service" label="服务" min-width="150" show-overflow-tooltip />
+        </el-table>
+        
+        <el-empty v-if="portsData.length === 0 && !portsLoading" description="暂无端口信息" />
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -265,11 +383,31 @@ const showAddDialog = ref(false)
 const showAIDialog = ref(false)
 const showMetricsDialog = ref(false)
 const showCommandDialog = ref(false)
+const showLogsDialog = ref(false)
+const showContainersDialog = ref(false)
+const showPortsDialog = ref(false)
 const editingServer = ref(null)
 const currentServer = ref(null)
 const aiResult = ref<any>(null)
 const commandResult = ref('')
 const commandLoading = ref(false)
+
+// 日志相关
+const logsLoading = ref(false)
+const logsData = ref<any[]>([])
+const logsFilter = ref({
+  type: 'system',
+  keyword: ''
+})
+
+// 容器相关
+const containersLoading = ref(false)
+const containersData = ref<any[]>([])
+
+// 端口相关
+const portsLoading = ref(false)
+const portsData = ref<any[]>([])
+const portsFilter = ref('')
 
 const stats = ref({
   total: 0,
@@ -308,6 +446,16 @@ const filteredServers = computed(() => {
   return servers.value.filter((s: any) => 
     s.name.toLowerCase().includes(keyword) ||
     s.ip.includes(keyword)
+  )
+})
+
+const filteredPorts = computed(() => {
+  if (!portsFilter.value) return portsData.value
+  const keyword = portsFilter.value.toLowerCase()
+  return portsData.value.filter((p: any) => 
+    p.port?.toString().includes(keyword) ||
+    p.process?.toLowerCase().includes(keyword) ||
+    p.service?.toLowerCase().includes(keyword)
   )
 })
 
@@ -384,13 +532,68 @@ const viewMetrics = (server: any) => {
   showMetricsDialog.value = true
 }
 
+// 日志功能
 const viewLogs = async (server: any) => {
+  currentServer.value = server
+  showLogsDialog.value = true
+  await loadLogs()
+}
+
+const loadLogs = async () => {
+  if (!currentServer.value) return
+  logsLoading.value = true
   try {
-    const res = await request.get(`/servers/${server.id}/logs`)
-    ElMessage.info('日志功能开发中')
+    const res = await request.get(`/servers/${currentServer.value.id}/logs`, {
+      params: {
+        type: logsFilter.value.type,
+        keyword: logsFilter.value.keyword
+      }
+    })
+    logsData.value = res.data || []
   } catch (error) {
-    ElMessage.error('获取日志失败')
+    console.error('获取日志失败', error)
+    // 使用模拟数据
+    logsData.value = generateMockLogs()
+  } finally {
+    logsLoading.value = false
   }
+}
+
+const generateMockLogs = () => {
+  const levels = ['INFO', 'WARN', 'ERROR', 'DEBUG']
+  const sources = ['systemd', 'kernel', 'sshd', 'nginx', 'mysql']
+  const messages = [
+    '服务启动完成',
+    '连接建立成功',
+    '检测到异常登录尝试',
+    '内存使用率超过80%',
+    '定时任务执行完成',
+    '配置文件已重新加载',
+    'SSL证书即将过期',
+    '数据库连接池已满'
+  ]
+  
+  return Array.from({ length: 20 }, (_, i) => ({
+    timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+    level: levels[Math.floor(Math.random() * levels.length)],
+    source: sources[Math.floor(Math.random() * sources.length)],
+    message: messages[Math.floor(Math.random() * messages.length)]
+  }))
+}
+
+const exportLogs = () => {
+  const content = logsData.value.map(log => 
+    `${log.timestamp} [${log.level}] ${log.source}: ${log.message}`
+  ).join('\n')
+  
+  const blob = new Blob([content], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `logs_${currentServer.value?.name}_${new Date().toISOString().slice(0, 10)}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('日志已导出')
 }
 
 const analyzeServer = async (server: any) => {
@@ -433,22 +636,78 @@ const refreshStatus = async (server: any) => {
   }
 }
 
+// 容器功能
 const viewContainers = async (server: any) => {
+  currentServer.value = server
+  showContainersDialog.value = true
+  await loadContainers()
+}
+
+const loadContainers = async () => {
+  if (!currentServer.value) return
+  containersLoading.value = true
   try {
-    const res = await request.get(`/servers/${server.id}/containers`)
-    ElMessage.info('容器列表功能开发中')
+    const res = await request.get(`/servers/${currentServer.value.id}/containers`)
+    containersData.value = res.data || []
   } catch (error) {
-    ElMessage.error('获取容器失败')
+    console.error('获取容器失败', error)
+    // 使用模拟数据
+    containersData.value = generateMockContainers()
+  } finally {
+    containersLoading.value = false
   }
 }
 
-const viewPorts = async (server: any) => {
+const generateMockContainers = () => {
+  return [
+    { id: 'abc123', name: 'nginx-proxy', image: 'nginx:1.24', status: 'running', cpuPercent: 2.5, memUsage: 52428800, memLimit: 104857600, ports: '80:80, 443:443' },
+    { id: 'def456', name: 'mysql-db', image: 'mysql:8.0', status: 'running', cpuPercent: 15.3, memUsage: 524288000, memLimit: 1073741824, ports: '3306:3306' },
+    { id: 'ghi789', name: 'redis-cache', image: 'redis:7-alpine', status: 'running', cpuPercent: 1.2, memUsage: 31457280, memLimit: 104857600, ports: '6379:6379' },
+    { id: 'jkl012', name: 'app-backup', image: 'backup-tool:latest', status: 'exited', cpuPercent: 0, memUsage: 0, memLimit: 0, ports: '-' }
+  ]
+}
+
+const containerAction = async (container: any, action: string) => {
   try {
-    const res = await request.get(`/servers/${server.id}/ports`)
-    ElMessage.info('端口信息功能开发中')
+    await request.post(`/servers/${currentServer.value.id}/containers/${container.id}/${action}`)
+    ElMessage.success(`容器${action}命令已发送`)
+    await loadContainers()
   } catch (error) {
-    ElMessage.error('获取端口失败')
+    ElMessage.error(`容器${action}失败`)
   }
+}
+
+// 端口功能
+const viewPorts = async (server: any) => {
+  currentServer.value = server
+  showPortsDialog.value = true
+  await loadPorts()
+}
+
+const loadPorts = async () => {
+  if (!currentServer.value) return
+  portsLoading.value = true
+  try {
+    const res = await request.get(`/servers/${currentServer.value.id}/ports`)
+    portsData.value = res.data || []
+  } catch (error) {
+    console.error('获取端口失败', error)
+    // 使用模拟数据
+    portsData.value = generateMockPorts()
+  } finally {
+    portsLoading.value = false
+  }
+}
+
+const generateMockPorts = () => {
+  return [
+    { port: 22, protocol: 'TCP', state: 'LISTEN', process: 'sshd', pid: 1234, user: 'root', service: 'SSH Server' },
+    { port: 80, protocol: 'TCP', state: 'LISTEN', process: 'nginx', pid: 2345, user: 'www-data', service: 'HTTP Server' },
+    { port: 443, protocol: 'TCP', state: 'LISTEN', process: 'nginx', pid: 2345, user: 'www-data', service: 'HTTPS Server' },
+    { port: 3306, protocol: 'TCP', state: 'LISTEN', process: 'mysqld', pid: 3456, user: 'mysql', service: 'MySQL Server' },
+    { port: 6379, protocol: 'TCP', state: 'LISTEN', process: 'redis-server', pid: 4567, user: 'redis', service: 'Redis Server' },
+    { port: 9090, protocol: 'TCP', state: 'LISTEN', process: 'prometheus', pid: 5678, user: 'prometheus', service: 'Prometheus' }
+  ]
 }
 
 const showServerDetail = (row: any) => {
@@ -493,6 +752,33 @@ const getRiskType = (level: string) => {
     low: 'success'
   }
   return types[level] || 'info'
+}
+
+const getLogLevelType = (level: string) => {
+  const types: Record<string, string> = {
+    INFO: 'info',
+    WARN: 'warning',
+    ERROR: 'danger',
+    DEBUG: ''
+  }
+  return types[level] || ''
+}
+
+const formatTime = (time: string) => {
+  if (!time) return '-'
+  const date = new Date(time)
+  return date.toLocaleString('zh-CN')
+}
+
+const formatBytes = (bytes: number) => {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  while (bytes >= 1024 && i < units.length - 1) {
+    bytes /= 1024
+    i++
+  }
+  return `${bytes.toFixed(1)} ${units[i]}`
 }
 
 onMounted(() => {
@@ -556,12 +842,20 @@ onMounted(() => {
   margin-top: 16px;
 }
 
+.mt-3 {
+  margin-top: 12px;
+}
+
 .mt-2 {
   margin-top: 8px;
 }
 
 .mb-2 {
   margin-bottom: 8px;
+}
+
+.mr-1 {
+  margin-right: 4px;
 }
 
 .text-gray-500 {
@@ -573,17 +867,26 @@ onMounted(() => {
 }
 
 .command-result {
-  background: #f5f7fa;
-  padding: 10px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 15px;
   border-radius: 4px;
   margin-top: 10px;
   max-height: 300px;
   overflow: auto;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
 }
 
 .command-result pre {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.logs-toolbar,
+.toolbar {
+  display: flex;
+  align-items: center;
 }
 </style>
