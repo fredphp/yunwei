@@ -168,18 +168,25 @@ const handleEdit = async (row: any) => {
   isEdit.value = true
   try {
     const res = await getRole(row.id)
+    // 安全检查数据结构
+    if (!res.data) {
+      ElMessage.error('获取角色详情失败：数据为空')
+      return
+    }
+    const roleData = res.data.role || res.data
     Object.assign(formData, {
-      id: res.data.role.id,
-      name: res.data.role.name,
-      keyword: res.data.role.keyword,
-      description: res.data.role.description,
+      id: roleData.id,
+      name: roleData.name || '',
+      keyword: roleData.keyword || '',
+      description: roleData.description || '',
       menuIds: res.data.menuIds || [],
       apiIds: res.data.apiIds || [],
-      status: res.data.role.status
+      status: roleData.status ?? 1
     })
     dialogVisible.value = true
   } catch (error) {
     console.error(error)
+    ElMessage.error('获取角色详情失败')
   }
 }
 
