@@ -49,6 +49,11 @@ func (s *AutoScaler) SetExecutor(executor K8sExecutor) {
 
 // AnalyzeAndScale 分析并执行扩容
 func (s *AutoScaler) AnalyzeAndScale(cluster *kubernetes.Cluster, namespace, deployment string, metrics map[string]float64) (*kubernetes.ScaleEvent, error) {
+        // 检查 executor 是否初始化
+        if s.executor == nil {
+                return nil, fmt.Errorf("K8s executor not initialized, please configure cluster connection first")
+        }
+
         // 获取当前状态
         currentStatus, err := s.executor.GetDeploymentStatus(cluster.ID, namespace, deployment)
         if err != nil {
@@ -201,6 +206,11 @@ func (s *AutoScaler) executeScale(event *kubernetes.ScaleEvent, targetReplicas i
 
 // ManualScale 手动扩容
 func (s *AutoScaler) ManualScale(clusterID uint, namespace, deployment string, targetReplicas int, reason string) (*kubernetes.ScaleEvent, error) {
+        // 检查 executor 是否初始化
+        if s.executor == nil {
+                return nil, fmt.Errorf("K8s executor not initialized, please configure cluster connection first")
+        }
+
         var cluster kubernetes.Cluster
         if err := global.DB.First(&cluster, clusterID).Error; err != nil {
                 return nil, fmt.Errorf("集群不存在")
@@ -230,6 +240,9 @@ func (s *AutoScaler) ManualScale(clusterID uint, namespace, deployment string, t
 
 // SetupHPA 配置 HPA
 func (s *AutoScaler) SetupHPA(clusterID uint, namespace, deployment string, config kubernetes.HPAConfig) error {
+        if s.executor == nil {
+                return fmt.Errorf("K8s executor not initialized, please configure cluster connection first")
+        }
         return s.executor.ApplyHPA(clusterID, namespace, deployment, config)
 }
 
@@ -270,6 +283,11 @@ func (s *AutoScaler) MonitorClusters() {
 
 // checkClusterForScaling 检查集群是否需要扩容
 func (s *AutoScaler) checkClusterForScaling(cluster *kubernetes.Cluster) {
+        // 检查 executor 是否初始化
+        if s.executor == nil {
+                return
+        }
+
         // 获取所有配置了 HPA 的 Deployment
         var hpaConfigs []kubernetes.HPAConfig
         global.DB.Where("cluster_id = ? AND enabled = ?", cluster.ID, true).Find(&hpaConfigs)
