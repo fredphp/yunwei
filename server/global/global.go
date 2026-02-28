@@ -10,6 +10,7 @@ import (
         "yunwei/model/scheduler"
         "yunwei/model/system"
         "yunwei/model/tenant"
+        "yunwei/service/security"
         "yunwei/utils"
 
         "go.uber.org/zap"
@@ -124,6 +125,15 @@ func autoMigrate() {
                 fmt.Println("HA表迁移警告: " + err.Error())
         }
 
+        // 安全/RBAC表
+        if err := DB.AutoMigrate(
+                &security.Permission{},
+                &security.Role{},
+                &security.User{},
+        ); err != nil {
+                fmt.Println("安全表迁移警告: " + err.Error())
+        }
+
         // 创建唯一索引
         createUniqueIndexes()
 }
@@ -155,6 +165,9 @@ func initData() {
 
         // 初始化租户测试数据
         initTenants()
+
+        // 初始化安全权限和角色
+        initSecurityData()
 }
 
 // initTenants 初始化租户测试数据
@@ -421,5 +434,49 @@ func InitLogger() {
         Logger, err = zap.NewProduction()
         if err != nil {
                 panic("日志初始化失败: " + err.Error())
+        }
+}
+
+// initSecurityData 初始化安全权限和角色
+func initSecurityData() {
+        // 初始化权限
+        var permCount int64
+        DB.Model(&security.Permission{}).Count(&permCount)
+        if permCount == 0 {
+                for _, perm := range security.PredefinedPermissions {
+                        p := security.Permission{
+                                Name:        perm.Name,
+                                Code:        perm.Code,
+                                Description: perm.Description,
+                                Group:       perm.Group,
+                        }
+                        DB.Create(&p)
+                }
+                fmt.Println("权限数据初始化完成")
+        }
+
+        // 初始化角色
+        var roleCount int64
+        DB.Model(&security.Role{}).Count(&roleCount)
+        if roleCount == 0 {
+                for _, roleDef := range security.PredefinedRoles {
+                        // 创建角色
+                        role := security.Role{
+                                Name:        roleDef.Name,
+                                Code:        roleDef.Code,
+                                Level:       roleDef.Level,
+                                IsSystem:    roleDef.IsSystem,
+                                IsDefault:   roleDef.Code == "viewer",
+                        }
+                        DB.Create(&role)
+
+                        // 关联权限
+                        if len(roleDef.Permissions) > 0 {
+                                var permissions []security.Permission
+                                DB.Where("code IN ?", roleDef.Permissions).Find(&permissions)
+                                DB.Model(&role).Association("Permissions").Replace(permissions)
+                        }
+                }
+                fmt.Println("安全角色数据初始化完成")
         }
 }
