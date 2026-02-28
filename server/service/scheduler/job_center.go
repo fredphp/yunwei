@@ -470,16 +470,6 @@ func (jc *JobCenter) ListTasks(filter *TaskFilter) ([]Task, int64, error) {
         return tasks, total, err
 }
 
-// TaskFilter 任务过滤器
-type TaskFilter struct {
-        Status    string `json:"status"`
-        Type      string `json:"type"`
-        QueueName string `json:"queueName"`
-        BatchID   uint   `json:"batchId"`
-        Limit     int    `json:"limit"`
-        Offset    int    `json:"offset"`
-}
-
 // ==================== 统计 ====================
 
 // GetQueueStats 获取队列统计
