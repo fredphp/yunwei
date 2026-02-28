@@ -129,10 +129,17 @@ const fetchData = async () => {
       page: pagination.page,
       pageSize: pagination.pageSize
     })
-    tableData.value = res.data.list
-    pagination.total = res.data.total
+    // 兼容两种响应格式
+    if (res.data && res.data.list) {
+      tableData.value = res.data.list
+      pagination.total = res.data.total
+    } else if (res.data) {
+      tableData.value = Array.isArray(res.data) ? res.data : []
+      pagination.total = tableData.value.length
+    }
   } catch (error) {
     console.error(error)
+    ElMessage.error('获取角色列表失败')
   } finally {
     loading.value = false
   }

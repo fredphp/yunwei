@@ -5,6 +5,7 @@ import (
 
         "yunwei/global"
         "yunwei/model/common/response"
+        system "yunwei/model/system"
         security "yunwei/service/security"
 
         "github.com/gin-gonic/gin"
@@ -45,9 +46,9 @@ func GetPermissionGroups(c *gin.Context) {
 
 // GetRoles 获取所有角色
 func GetRoles(c *gin.Context) {
-        var roles []security.Role
+        var roles []system.SysRole
 
-        query := global.DB.Model(&security.Role{})
+        query := global.DB.Model(&system.SysRole{})
 
         // 搜索
         if name := c.Query("name"); name != "" {
@@ -60,7 +61,7 @@ func GetRoles(c *gin.Context) {
         var total int64
 
         query.Count(&total)
-        query.Preload("Permissions").Offset((page - 1) * pageSize).Limit(pageSize).Find(&roles)
+        query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&roles)
 
         response.OkWithData(gin.H{
                 "list":     roles,
@@ -78,23 +79,34 @@ func GetRole(c *gin.Context) {
                 return
         }
 
-        rbac := security.NewRBACManager(global.DB)
-        role, err := rbac.GetRoleByID(uint(id))
-        if err != nil {
+        var role system.SysRole
+        if err := global.DB.First(&role, uint(id)).Error; err != nil {
                 response.FailWithMessage("角色不存在", c)
                 return
         }
 
-        response.OkWithData(role, c)
+        // 获取角色的菜单ID
+        var menuIds []uint
+        global.DB.Model(&system.SysRoleMenu{}).Where("role_id = ?", id).Pluck("menu_id", &menuIds)
+
+        // 获取角色的API ID
+        var apiIds []uint
+        global.DB.Model(&system.SysRoleApi{}).Where("role_id = ?", id).Pluck("api_id", &apiIds)
+
+        response.OkWithData(gin.H{
+                "role":    role,
+                "menuIds": menuIds,
+                "apiIds":  apiIds,
+        }, c)
 }
 
 // CreateRoleRequest 创建角色请求
 type CreateRoleRequest struct {
         Name        string   `json:"name" binding:"required"`
-        Code        string   `json:"code" binding:"required"`
+        Keyword     string   `json:"keyword" binding:"required"`
         Description string   `json:"description"`
-        Level       int      `json:"level"`
-        Permissions []string `json:"permissions"`
+        MenuIds     []uint   `json:"menuIds"`
+        ApiIds      []uint   `json:"apiIds"`
 }
 
 // CreateRole 创建角色
@@ -105,45 +117,54 @@ func CreateRole(c *gin.Context) {
                 return
         }
 
-        // 检查代码是否已存在
+        // 检查关键字是否存在
         var count int64
-        global.DB.Model(&security.Role{}).Where("code = ?", req.Code).Count(&count)
+        global.DB.Model(&system.SysRole{}).Where("keyword = ?", req.Keyword).Count(&count)
         if count > 0 {
-                response.FailWithMessage("角色代码已存在", c)
+                response.FailWithMessage("角色关键字已存在", c)
                 return
         }
 
         // 创建角色
-        role := &security.Role{
+        role := &system.SysRole{
                 Name:        req.Name,
-                Code:        req.Code,
+                Keyword:     req.Keyword,
                 Description: req.Description,
-                Level:       req.Level,
-                IsSystem:    false,
+                Status:      1,
         }
 
-        // 获取权限
-        if len(req.Permissions) > 0 {
-                var permissions []security.Permission
-                global.DB.Where("code IN ?", req.Permissions).Find(&permissions)
-                role.Permissions = permissions
-        }
-
-        rbac := security.NewRBACManager(global.DB)
-        if err := rbac.CreateRole(role); err != nil {
-                response.FailWithMessage("创建失败: "+err.Error(), c)
+        tx := global.DB.Begin()
+        if err := tx.Create(role).Error; err != nil {
+                tx.Rollback()
+                response.FailWithMessage("创建失败", c)
                 return
         }
 
+        // 关联菜单
+        for _, menuId := range req.MenuIds {
+                roleMenu := system.SysRoleMenu{RoleID: role.ID, MenuID: menuId}
+                tx.Create(&roleMenu)
+        }
+
+        // 关联API
+        for _, apiId := range req.ApiIds {
+                roleApi := system.SysRoleApi{RoleID: role.ID, ApiID: apiId}
+                tx.Create(&roleApi)
+        }
+
+        tx.Commit()
         response.OkWithData(role, c)
 }
 
 // UpdateRoleRequest 更新角色请求
 type UpdateRoleRequest struct {
-        Name        string   `json:"name"`
-        Description string   `json:"description"`
-        Level       int      `json:"level"`
-        Permissions []string `json:"permissions"`
+        ID          uint   `json:"id" binding:"required"`
+        Name        string `json:"name" binding:"required"`
+        Keyword     string `json:"keyword" binding:"required"`
+        Description string `json:"description"`
+        Status      *int   `json:"status"`
+        MenuIds     []uint `json:"menuIds"`
+        ApiIds      []uint `json:"apiIds"`
 }
 
 // UpdateRole 更新角色
@@ -154,50 +175,52 @@ func UpdateRole(c *gin.Context) {
                 return
         }
 
-        var role security.Role
+        var role system.SysRole
         if err := global.DB.First(&role, id).Error; err != nil {
                 response.FailWithMessage("角色不存在", c)
                 return
         }
 
-        // 检查是否是超级管理员（RoleID == 1）
-        isAdmin, _ := c.Get("isAdmin")
-        isSuperAdmin := isAdmin == true
-
-        // 只有超级管理员可以修改系统角色
-        if role.IsSystem && !isSuperAdmin {
-                response.FailWithMessage("系统角色不可修改", c)
-                return
-        }
-
         var req UpdateRoleRequest
         if err := c.ShouldBindJSON(&req); err != nil {
-                response.FailWithMessage("参数错误", c)
+                response.FailWithMessage("参数错误: "+err.Error(), c)
                 return
         }
 
-        // 更新基本信息
-        updates := map[string]interface{}{}
-        if req.Name != "" {
-                updates["name"] = req.Name
+        tx := global.DB.Begin()
+
+        // 更新角色基本信息
+        updates := map[string]interface{}{
+                "name":        req.Name,
+                "keyword":     req.Keyword,
+                "description": req.Description,
         }
-        if req.Description != "" {
-                updates["description"] = req.Description
-        }
-        if req.Level > 0 {
-                updates["level"] = req.Level
+        if req.Status != nil {
+                updates["status"] = *req.Status
         }
 
-        global.DB.Model(&role).Updates(updates)
-
-        // 更新权限
-        if req.Permissions != nil {
-                var permissions []security.Permission
-                global.DB.Where("code IN ?", req.Permissions).Find(&permissions)
-                global.DB.Model(&role).Association("Permissions").Replace(permissions)
+        if err := tx.Model(&system.SysRole{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+                tx.Rollback()
+                response.FailWithMessage("更新失败", c)
+                return
         }
 
-        response.OkWithData(role, c)
+        // 更新菜单关联
+        tx.Where("role_id = ?", id).Delete(&system.SysRoleMenu{})
+        for _, menuId := range req.MenuIds {
+                roleMenu := system.SysRoleMenu{RoleID: uint(id), MenuID: menuId}
+                tx.Create(&roleMenu)
+        }
+
+        // 更新API关联
+        tx.Where("role_id = ?", id).Delete(&system.SysRoleApi{})
+        for _, apiId := range req.ApiIds {
+                roleApi := system.SysRoleApi{RoleID: uint(id), ApiID: apiId}
+                tx.Create(&roleApi)
+        }
+
+        tx.Commit()
+        response.OkWithMessage("更新成功", c)
 }
 
 // DeleteRole 删除角色
@@ -208,40 +231,29 @@ func DeleteRole(c *gin.Context) {
                 return
         }
 
-        // 检查是否是超级管理员
-        isAdmin, _ := c.Get("isAdmin")
-        isSuperAdmin := isAdmin == true
-
-        var role security.Role
-        if err := global.DB.First(&role, id).Error; err != nil {
-                response.FailWithMessage("角色不存在", c)
-                return
-        }
-
-        // 只有超级管理员可以删除系统角色
-        if role.IsSystem && !isSuperAdmin {
-                response.FailWithMessage("系统角色不可删除", c)
-                return
-        }
-
-        // 检查是否有用户使用此角色
-        var userCount int64
-        global.DB.Table("user_roles").Where("role_id = ?", id).Count(&userCount)
-        if userCount > 0 {
+        // 检查是否有用户使用该角色
+        var count int64
+        global.DB.Model(&system.SysUser{}).Where("role_id = ?", id).Count(&count)
+        if count > 0 {
                 response.FailWithMessage("该角色下存在用户，无法删除", c)
                 return
         }
 
-        // 删除角色关联的权限
-        global.DB.Exec("DELETE FROM role_permissions WHERE role_id = ?", id)
-        
+        tx := global.DB.Begin()
+
+        // 删除角色关联的菜单
+        tx.Where("role_id = ?", id).Delete(&system.SysRoleMenu{})
+        // 删除角色关联的API
+        tx.Where("role_id = ?", id).Delete(&system.SysRoleApi{})
         // 删除角色
-        if err := global.DB.Delete(&role).Error; err != nil {
-                response.FailWithMessage("删除失败: "+err.Error(), c)
+        if err := tx.Delete(&system.SysRole{}, id).Error; err != nil {
+                tx.Rollback()
+                response.FailWithMessage("删除失败", c)
                 return
         }
 
-        response.Ok(nil, c)
+        tx.Commit()
+        response.OkWithMessage("删除成功", c)
 }
 
 // ==================== 用户权限管理 ====================
