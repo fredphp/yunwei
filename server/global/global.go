@@ -11,6 +11,7 @@ import (
         "yunwei/model/security"
         "yunwei/model/system"
         "yunwei/model/tenant"
+        "yunwei/service/migration"
         "yunwei/utils"
 
         "go.uber.org/zap"
@@ -40,6 +41,9 @@ func InitDB() {
 
         // 自动迁移表结构
         autoMigrate()
+
+        // 执行SQL数据迁移（在表结构创建后、数据初始化前）
+        runMigrations()
 
         // 初始化数据
         initData()
@@ -134,6 +138,13 @@ func autoMigrate() {
                 fmt.Println("安全表迁移警告: " + err.Error())
         }
 
+        // 迁移记录表
+        if err := DB.AutoMigrate(
+                &system.SysMigration{},
+        ); err != nil {
+                fmt.Println("迁移记录表迁移警告: " + err.Error())
+        }
+
         // 创建唯一索引
         createUniqueIndexes()
 }
@@ -151,6 +162,22 @@ func createUniqueIndexes() {
         
         // 角色-菜单关联：角色和菜单唯一
         DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_role_menu ON sys_role_menus(role_id, menu_id)")
+}
+
+// runMigrations 执行SQL数据迁移
+func runMigrations() {
+        // 迁移文件目录列表（按优先级排序）
+        // 1. server/migrations - 服务端专用迁移
+        // 2. sql/migrations - 通用SQL迁移
+        migrationsDirs := []string{
+                "migrations",      // server/migrations
+                "../sql/migrations", // sql/migrations (相对于server目录)
+        }
+        
+        mm := migration.NewMigrationManagerWithDirs(migrationsDirs)
+        if err := mm.Run(); err != nil {
+                fmt.Printf("数据迁移执行失败: %v\n", err)
+        }
 }
 
 func initData() {
