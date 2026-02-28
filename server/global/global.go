@@ -151,17 +151,28 @@ func autoMigrate() {
 
 // createUniqueIndexes 创建唯一索引
 func createUniqueIndexes() {
+        // MySQL不支持 CREATE UNIQUE INDEX IF NOT EXISTS 语法
+        // 使用 ALTER TABLE ADD UNIQUE INDEX 并忽略重复错误
+        
         // 菜单表：同一父菜单下名称唯一
-        DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_menu_name_parent ON sys_menus(name, parent_id)")
+        if err := DB.Exec("ALTER TABLE sys_menus ADD UNIQUE INDEX idx_menu_name_parent (name, parent_id)").Error; err != nil {
+                // 忽略已存在的错误
+        }
         
         // API表：路径和方法唯一
-        DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_api_path_method ON sys_apis(path, method)")
+        if err := DB.Exec("ALTER TABLE sys_apis ADD UNIQUE INDEX idx_api_path_method (path, method)").Error; err != nil {
+                // 忽略已存在的错误
+        }
         
         // 角色-API关联：角色和API唯一
-        DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_role_api ON sys_role_apis(role_id, api_id)")
+        if err := DB.Exec("ALTER TABLE sys_role_apis ADD UNIQUE INDEX idx_role_api (role_id, api_id)").Error; err != nil {
+                // 忽略已存在的错误
+        }
         
         // 角色-菜单关联：角色和菜单唯一
-        DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_role_menu ON sys_role_menus(role_id, menu_id)")
+        if err := DB.Exec("ALTER TABLE sys_role_menus ADD UNIQUE INDEX idx_role_menu (role_id, menu_id)").Error; err != nil {
+                // 忽略已存在的错误
+        }
 }
 
 // runMigrations 执行SQL数据迁移
