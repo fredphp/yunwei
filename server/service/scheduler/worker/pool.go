@@ -135,6 +135,24 @@ func (wp *WorkerPool) runWorker(worker *PoolWorker) {
 
 // executeTask 执行任务
 func (wp *WorkerPool) executeTask(worker *PoolWorker, task *schedulerModel.Task) {
+        // 检查 executor 是否初始化，防止 nil pointer panic
+        if wp.executor == nil {
+                worker.Status = PoolWorkerStatusError
+                worker.LastError = "executor not initialized"
+
+                task.Status = schedulerModel.TaskStatusFailed
+                task.Error = "executor not initialized"
+                global.DB.Save(task)
+
+                recordTaskEvent(task.ID, "failed", map[string]interface{}{
+                        "error": "executor not initialized",
+                }, worker.ID, "执行器未初始化")
+
+                worker.Status = PoolWorkerStatusIdle
+                worker.CurrentTask = 0
+                return
+        }
+
         // 更新 Worker 状态
         worker.Status = PoolWorkerStatusBusy
         worker.CurrentTask = task.ID
