@@ -26,12 +26,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/servers/index.vue'),
         meta: { title: '服务器列表', icon: 'Monitor' }
       },
-      {
-        path: 'servers/alerts',
-        name: 'ServerAlerts',
-        component: () => import('@/views/alerts/index.vue'),
-        meta: { title: '告警管理', icon: 'Bell' }
-      },
       // 告警中心（独立一级菜单）
       {
         path: 'alerts',

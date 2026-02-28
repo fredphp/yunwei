@@ -316,30 +316,30 @@ INSERT INTO `sys_menus` (`parent_id`, `title`, `name`, `path`, `component`, `ico
 -- 一级菜单
 (0, '仪表盘', 'Dashboard', '/dashboard', 'views/dashboard/index', 'Odometer', 1, 1, 0),
 (0, '服务器管理', 'Servers', '/servers', 'Layout', 'Monitor', 2, 1, 0),
-(0, 'Kubernetes', 'Kubernetes', '/kubernetes', 'Layout', 'Grid', 3, 1, 0),
-(0, '灰度发布', 'Canary', '/canary', 'Layout', 'Promotion', 4, 1, 0),
-(0, '负载均衡', 'LoadBalancer', '/loadbalancer', 'Layout', 'Connection', 5, 1, 0),
-(0, '证书管理', 'Certificate', '/certificate', 'Layout', 'DocumentChecked', 6, 1, 0),
-(0, 'CDN管理', 'CDN', '/cdn', 'Layout', 'Position', 7, 1, 0),
-(0, '智能部署', 'Deploy', '/deploy', 'Layout', 'Upload', 8, 1, 0),
-(0, '任务调度', 'Scheduler', '/scheduler', 'Layout', 'Timer', 9, 1, 0),
-(0, 'Agent管理', 'Agents', '/agents', 'Layout', 'Cpu', 10, 1, 0),
-(0, '高可用', 'HA', '/ha', 'Layout', 'CircleCheck', 11, 1, 0),
-(0, '灾备备份', 'Backup', '/backup', 'Layout', 'Files', 12, 1, 0),
-(0, '成本控制', 'Cost', '/cost', 'Layout', 'Coin', 13, 1, 0),
-(0, '系统管理', 'System', '/system', 'Layout', 'Setting', 14, 1, 0),
+(0, '告警中心', 'Alerts', '/alerts', 'views/alerts/index', 'Bell', 3, 1, 0),
+(0, 'Kubernetes', 'Kubernetes', '/kubernetes', 'Layout', 'Grid', 4, 1, 0),
+(0, '灰度发布', 'Canary', '/canary', 'Layout', 'Promotion', 5, 1, 0),
+(0, '负载均衡', 'LoadBalancer', '/loadbalancer', 'Layout', 'Connection', 6, 1, 0),
+(0, '证书管理', 'Certificate', '/certificate', 'Layout', 'DocumentChecked', 7, 1, 0),
+(0, 'CDN管理', 'CDN', '/cdn', 'Layout', 'Position', 8, 1, 0),
+(0, '智能部署', 'Deploy', '/deploy', 'Layout', 'Upload', 9, 1, 0),
+(0, '任务调度', 'Scheduler', '/scheduler', 'Layout', 'Timer', 10, 1, 0),
+(0, 'Agent管理', 'Agents', '/agents', 'Layout', 'Cpu', 11, 1, 0),
+(0, '高可用', 'HA', '/ha', 'Layout', 'CircleCheck', 12, 1, 0),
+(0, '灾备备份', 'Backup', '/backup', 'Layout', 'Files', 13, 1, 0),
+(0, '成本控制', 'Cost', '/cost', 'Layout', 'Coin', 14, 1, 0),
+(0, '系统管理', 'System', '/system', 'Layout', 'Setting', 15, 1, 0),
 
 -- 服务器管理子菜单
 (2, '服务器列表', 'ServerList', '/servers/list', 'views/servers/index', 'List', 1, 1, 0),
-(2, '告警管理', 'Alerts', '/servers/alerts', 'views/alerts/index', 'Bell', 2, 1, 0),
 
 -- Kubernetes子菜单
-(3, '集群管理', 'Clusters', '/kubernetes/clusters', 'views/kubernetes/index', 'Cluster', 1, 1, 0),
+(4, '集群管理', 'Clusters', '/kubernetes/clusters', 'views/kubernetes/index', 'Cluster', 1, 1, 0),
 
 -- 系统管理子菜单
-(14, '用户管理', 'UserManage', '/system/user', 'views/system/user/index', 'User', 1, 1, 0),
-(14, '角色管理', 'RoleManage', '/system/role', 'views/system/role/index', 'UserFilled', 2, 1, 0),
-(14, '菜单管理', 'MenuManage', '/system/menu', 'views/system/menu/index', 'Menu', 3, 1, 0);
+(15, '用户管理', 'UserManage', '/system/user', 'views/system/user/index', 'User', 1, 1, 0),
+(15, '角色管理', 'RoleManage', '/system/role', 'views/system/role/index', 'UserFilled', 2, 1, 0),
+(15, '菜单管理', 'MenuManage', '/system/menu', 'views/system/menu/index', 'Menu', 3, 1, 0);
 
 -- 初始化超级管理员用户 (密码: admin123, MD5加密后)
 INSERT INTO `sys_users` (`username`, `password`, `nick_name`, `email`, `role_id`, `status`) VALUES
