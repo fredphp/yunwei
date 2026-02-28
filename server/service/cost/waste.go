@@ -5,23 +5,9 @@ import (
         "fmt"
         "sync"
         "time"
-)
 
-// ResourceWaste 资源浪费记录
-type ResourceWaste struct {
-        WasteID        string    `json:"waste_id" gorm:"primaryKey"`
-        ResourceID     string    `json:"resource_id" gorm:"size:100;not null;index"`
-        ResourceName   string    `json:"resource_name" gorm:"size:200"`
-        ResourceType   string    `json:"resource_type" gorm:"size:50;not null;index"`
-        WasteType      string    `json:"waste_type" gorm:"size:50;not null"`
-        MonthlyCost    float64   `json:"monthly_cost"`
-        WastedCost     float64   `json:"wasted_cost"`
-        WastedPercent  float64   `json:"wasted_percent"`
-        Recommendation string    `json:"recommendation" gorm:"type:text"`
-        Priority       string    `json:"priority" gorm:"size:20"`
-        Status         string    `json:"status" gorm:"size:20;default:'open'"`
-        DetectedAt     time.Time `json:"detected_at"`
-}
+        "yunwei/model/cost"
+)
 
 // WasteDetectionService 资源浪费检测服务
 type WasteDetectionService struct {
@@ -522,20 +508,16 @@ func (s *WasteDetectionService) generateWasteRecommendations(summary *WasteSumma
 }
 
 // CreateWasteRecord 创建浪费记录
-func (s *WasteDetectionService) CreateWasteRecord(ctx context.Context, item WasteItem) *ResourceWaste {
-        record := &ResourceWaste{
-                WasteID:       fmt.Sprintf("waste_%d", time.Now().Unix()),
+func (s *WasteDetectionService) CreateWasteRecord(ctx context.Context, item WasteItem) *cost.WasteDetection {
+        record := &cost.WasteDetection{
                 ResourceID:    item.ResourceID,
                 ResourceName:  item.ResourceName,
                 ResourceType:  item.ResourceType,
                 WasteType:     item.WasteType,
-                MonthlyCost:   item.MonthlyCost,
-                WastedCost:    item.WastedCost,
-                WastedPercent: item.UsagePercent,
+                MetricValue:   item.MonthlyCost,
+                MonthlyWasteCost: item.WastedCost,
                 Recommendation: item.Recommendation,
-                Priority:      item.Priority,
-                Status:        "open",
-                DetectedAt:    time.Now(),
+                RiskLevel:     item.Priority,
         }
 
         return record

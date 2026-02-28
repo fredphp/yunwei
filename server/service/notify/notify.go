@@ -5,18 +5,63 @@ import (
         "encoding/json"
         "fmt"
         "net/http"
+        "time"
 
         "yunwei/global"
-        "yunwei/model/notify"
-        "yunwei/model/patrol"
+        patrolModel "yunwei/model/patrol"
         "yunwei/service/detector"
 )
 
 // Notifier 通知器接口
 type Notifier interface {
-        SendPatrolReport(record *patrol.PatrolRecord) error
+        SendPatrolReport(record *patrolModel.PatrolRecord) error
         SendAlert(alert *detector.Alert) error
         SendMessage(title, content string) error
+}
+
+// NotifyConfig 通知配置
+type NotifyConfig struct {
+        // Telegram
+        TelegramEnabled bool   `json:"telegramEnabled"`
+        TelegramToken   string `json:"telegramToken"`
+        TelegramChatID  string `json:"telegramChatId"`
+
+        // 企业微信
+        WeChatEnabled   bool   `json:"weChatEnabled"`
+        WeChatWebhook   string `json:"weChatWebhook"`
+
+        // 钉钉
+        DingTalkEnabled bool   `json:"dingTalkEnabled"`
+        DingTalkWebhook string `json:"dingTalkWebhook"`
+
+        // 邮件
+        EmailEnabled  bool     `json:"emailEnabled"`
+        SMTPHost      string   `json:"smtpHost"`
+        SMTPPort      int      `json:"smtpPort"`
+        SMTPUser      string   `json:"smtpUser"`
+        SMTPPassword  string   `json:"smtpPassword"`
+        EmailTo       []string `json:"emailTo"`
+
+        // 飞书
+        FeishuEnabled bool   `json:"feishuEnabled"`
+        FeishuWebhook string `json:"feishuWebhook"`
+}
+
+// NotifyRecord 通知记录
+type NotifyRecord struct {
+        ID        uint      `json:"id" gorm:"primarykey"`
+        CreatedAt time.Time `json:"createdAt"`
+
+        Type      string `json:"type" gorm:"type:varchar(32)"`  // patrol, alert, message
+        Channel   string `json:"channel" gorm:"type:varchar(32)"` // telegram, wechat, dingtalk, email
+        Title     string `json:"title" gorm:"type:varchar(255)"`
+        Content   string `json:"content" gorm:"type:text"`
+        Status    string `json:"status" gorm:"type:varchar(16)"` // success, failed
+        Error     string `json:"error" gorm:"type:text"`
+}
+
+func (NotifyRecord) TableName() string {
+        return "notify_records"
 }
 
 // TelegramNotifier Telegram通知器
@@ -59,7 +104,7 @@ func (t *TelegramNotifier) SendMessage(text string) error {
 }
 
 // SendPatrolReport 发送巡检报告
-func (t *TelegramNotifier) SendPatrolReport(record *patrol.PatrolRecord) error {
+func (t *TelegramNotifier) SendPatrolReport(record *patrolModel.PatrolRecord) error {
         text := formatPatrolReport(record)
         return t.SendMessage(text)
 }
@@ -107,7 +152,7 @@ func (w *WeChatNotifier) SendMessage(content string) error {
 }
 
 // SendPatrolReport 发送巡检报告
-func (w *WeChatNotifier) SendPatrolReport(record *patrol.PatrolRecord) error {
+func (w *WeChatNotifier) SendPatrolReport(record *patrolModel.PatrolRecord) error {
         content := formatPatrolReportMarkdown(record)
         return w.SendMessage(content)
 }
@@ -152,7 +197,7 @@ func (d *DingTalkNotifier) SendMessage(content string) error {
 }
 
 // SendPatrolReport 发送巡检报告
-func (d *DingTalkNotifier) SendPatrolReport(record *patrol.PatrolRecord) error {
+func (d *DingTalkNotifier) SendPatrolReport(record *patrolModel.PatrolRecord) error {
         content := formatPatrolReportMarkdown(record)
         return d.SendMessage(content)
 }
@@ -201,7 +246,7 @@ func (f *FeishuNotifier) SendMessage(content string) error {
 }
 
 // SendPatrolReport 发送巡检报告
-func (f *FeishuNotifier) SendPatrolReport(record *patrol.PatrolRecord) error {
+func (f *FeishuNotifier) SendPatrolReport(record *patrolModel.PatrolRecord) error {
         content := formatPatrolReportMarkdown(record)
         return f.SendMessage(content)
 }
@@ -215,7 +260,7 @@ type MultiNotifier struct {
 }
 
 // NewMultiNotifier 创建多通道通知器
-func NewMultiNotifier(config notify.NotifyConfig) *MultiNotifier {
+func NewMultiNotifier(config NotifyConfig) *MultiNotifier {
         n := &MultiNotifier{}
 
         if config.TelegramEnabled && config.TelegramToken != "" {
@@ -235,7 +280,7 @@ func NewMultiNotifier(config notify.NotifyConfig) *MultiNotifier {
 }
 
 // SendPatrolReport 发送巡检报告到所有配置的通道
-func (n *MultiNotifier) SendPatrolReport(record *patrol.PatrolRecord) error {
+func (n *MultiNotifier) SendPatrolReport(record *patrolModel.PatrolRecord) error {
         if n.telegram != nil {
                 if err := n.telegram.SendPatrolReport(record); err != nil {
                         n.logNotify("patrol", "telegram", "巡检报告", record.Summary, "failed", err.Error())
@@ -310,7 +355,7 @@ func (n *MultiNotifier) SendMessage(title, content string) error {
 
 // logNotify 记录通知日志
 func (n *MultiNotifier) logNotify(notifyType, channel, title, content, status, errMsg string) {
-        record := notify.NotifyRecord{
+        record := NotifyRecord{
                 Type:    notifyType,
                 Channel: channel,
                 Title:   title,
@@ -322,7 +367,7 @@ func (n *MultiNotifier) logNotify(notifyType, channel, title, content, status, e
 }
 
 // Helper functions
-func formatPatrolReport(record *patrol.PatrolRecord) string {
+func formatPatrolReport(record *patrolModel.PatrolRecord) string {
         return fmt.Sprintf(`🤖 *服务器巡检报告*
 
 📅 时间: %s
@@ -351,7 +396,7 @@ func formatPatrolReport(record *patrol.PatrolRecord) string {
         )
 }
 
-func formatPatrolReportMarkdown(record *patrol.PatrolRecord) string {
+func formatPatrolReportMarkdown(record *patrolModel.PatrolRecord) string {
         return fmt.Sprintf(`# 🤖 服务器巡检报告
 
 > 时间: %s | 类型: %s

@@ -9,7 +9,7 @@ import (
 
 	"yunwei/global"
 	"yunwei/service/ai/llm"
-	"yunwei/model/notify"
+	"yunwei/service/notify"
 )
 
 // LBType 负载均衡类型

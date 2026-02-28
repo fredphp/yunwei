@@ -13,7 +13,7 @@ import (
 	"yunwei/service/ai/llm"
 	"yunwei/service/detector"
 	"yunwei/service/executor"
-	"yunwei/model/notify"
+	"yunwei/service/notify"
 	"yunwei/service/security"
 )
 

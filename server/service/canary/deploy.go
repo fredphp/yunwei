@@ -9,6 +9,7 @@ import (
 
         "yunwei/global"
         "yunwei/service/ai/llm"
+        "yunwei/service/notify"
 )
 
 // DeployStatus 发布状态
@@ -153,13 +154,8 @@ func (CanaryConfig) TableName() string {
 // CanaryManager 灰度发布管理器
 type CanaryManager struct {
         llmClient *llm.GLM5Client
-        notifier  CanaryNotifier
+        notifier  notify.Notifier
         executor  CanaryExecutor
-}
-
-// CanaryNotifier 灰度通知器接口
-type CanaryNotifier interface {
-        SendMessage(title, content string) error
 }
 
 // CanaryExecutor 灰度执行器接口
@@ -190,7 +186,7 @@ func (m *CanaryManager) SetLLMClient(client *llm.GLM5Client) {
 }
 
 // SetNotifier 设置通知器
-func (m *CanaryManager) SetNotifier(notifier CanaryNotifier) {
+func (m *CanaryManager) SetNotifier(notifier notify.Notifier) {
         m.notifier = notifier
 }
 

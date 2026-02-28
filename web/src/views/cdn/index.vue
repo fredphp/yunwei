@@ -287,7 +287,7 @@ const cdnStats = computed(() => {
 const fetchDomains = async () => {
   loading.value = true
   try {
-    const res = await request.get('/api/v1/cdn/domains')
+    const res = await request.get('/cdn/domains')
     domains.value = res.data || []
     if (domains.value.length > 0) {
       viewDetail(domains.value[0])
@@ -309,7 +309,7 @@ const viewDetail = async (domain: any) => {
 const fetchCacheRules = async (domainId: number) => {
   rulesLoading.value = true
   try {
-    const res = await request.get(`/api/v1/cdn/domains/${domainId}/rules`)
+    const res = await request.get(`/cdn/domains/${domainId}/rules`)
     cacheRules.value = res.data || []
   } catch (error) {
     console.error('获取缓存规则失败', error)
@@ -321,7 +321,7 @@ const fetchCacheRules = async (domainId: number) => {
 const fetchNodes = async (domainId: number) => {
   nodesLoading.value = true
   try {
-    const res = await request.get(`/api/v1/cdn/domains/${domainId}/nodes`)
+    const res = await request.get(`/cdn/domains/${domainId}/nodes`)
     cdnNodes.value = res.data || []
   } catch (error) {
     console.error('获取节点状态失败', error)
@@ -332,7 +332,7 @@ const fetchNodes = async (domainId: number) => {
 
 const addDomain = async () => {
   try {
-    await request.post('/api/v1/cdn/domains', domainForm.value)
+    await request.post('/cdn/domains', domainForm.value)
     ElMessage.success('添加成功')
     showAddDialog.value = false
     fetchDomains()
@@ -343,7 +343,7 @@ const addDomain = async () => {
 
 const optimizeCDN = async (domain: any) => {
   try {
-    const res = await request.post(`/api/v1/cdn/domains/${domain.id}/optimize`)
+    const res = await request.post(`/cdn/domains/${domain.id}/optimize`)
     ElMessage.success('AI 优化已执行')
     fetchDomains()
   } catch (error) {
@@ -364,7 +364,7 @@ const purgeCache = async () => {
     return
   }
   try {
-    await request.post(`/api/v1/cdn/domains/${currentDomain.value.id}/purge`, { urls })
+    await request.post(`/cdn/domains/${currentDomain.value.id}/purge`, { urls })
     ElMessage.success('刷新请求已提交')
     showPurgeCacheDialog.value = false
   } catch (error) {
@@ -378,7 +378,7 @@ const costOptimize = async () => {
     return
   }
   try {
-    await request.post(`/api/v1/cdn/domains/${currentDomain.value.id}/cost-optimize`)
+    await request.post(`/cdn/domains/${currentDomain.value.id}/cost-optimize`)
     ElMessage.success('成本优化分析已完成')
   } catch (error) {
     ElMessage.error('分析失败')
@@ -391,7 +391,7 @@ const preheatHotContent = async () => {
     return
   }
   try {
-    await request.post(`/api/v1/cdn/domains/${currentDomain.value.id}/preheat`, { urls: [] })
+    await request.post(`/cdn/domains/${currentDomain.value.id}/preheat`, { urls: [] })
     ElMessage.success('热点内容预热已启动')
   } catch (error) {
     ElMessage.error('预热失败')
@@ -400,7 +400,7 @@ const preheatHotContent = async () => {
 
 const addRule = async () => {
   try {
-    await request.post(`/api/v1/cdn/domains/${currentDomain.value.id}/rules`, ruleForm.value)
+    await request.post(`/cdn/domains/${currentDomain.value.id}/rules`, ruleForm.value)
     ElMessage.success('添加成功')
     showRuleDialog.value = false
     fetchCacheRules(currentDomain.value.id)
@@ -415,7 +415,7 @@ const editRule = (rule: any) => {
 
 const deleteRule = async (rule: any) => {
   try {
-    await request.delete(`/api/v1/cdn/rules/${rule.id}`)
+    await request.delete(`/cdn/rules/${rule.id}`)
     ElMessage.success('删除成功')
     fetchCacheRules(currentDomain.value.id)
   } catch (error) {

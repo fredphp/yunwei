@@ -593,23 +593,22 @@ func (s *IdleDetectionService) generateIdleRecommendations(summary *IdleSummary)
 // CreateIdleRecord 创建闲置记录
 func (s *IdleDetectionService) CreateIdleRecord(ctx context.Context, r IdleResource) *cost.IdleResource {
         record := &cost.IdleResource{
-                ResourceID:        r.ResourceID,
-                ResourceName:      r.ResourceName,
-                ResourceType:      r.ResourceType,
-                Provider:          r.Provider,
-                Region:            r.Region,
-                State:             r.Status,
-                CPUUtilization:    r.CPUUsage,
+                ResourceID:       r.ResourceID,
+                ResourceName:     r.ResourceName,
+                ResourceType:     r.ResourceType,
+                Provider:         r.Provider,
+                IdleStatus:       r.IdleReason,
+                IdleDays:         r.IdleDays,
+                IdleScore:        r.IdleScore,
+                MonthlyCost:      r.MonthlyCost,
+                AccumulatedCost:  r.TotalWastedCost,
+                CPUUtilization:   r.CPUUsage,
                 MemoryUtilization: r.MemoryUsage,
                 NetworkThroughput: r.NetworkUsage,
-                IdleStatus:        "idle",
-                IdleDays:          r.IdleDays,
-                IdleScore:         r.IdleScore,
-                MonthlyCost:       r.MonthlyCost,
-                AccumulatedCost:   r.TotalWastedCost,
-                Recommendation:    r.Recommendation,
-                Status:            "active",
-                FirstDetectedAt:   time.Now(),
+                Recommendation:   r.Recommendation,
+                ScheduledAction:  r.Action,
+                Status:           "active",
+                FirstDetectedAt:  time.Now(),
         }
 
         if r.LastActiveTime != "" {

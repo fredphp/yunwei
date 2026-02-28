@@ -2,6 +2,7 @@ package worker
 
 import (
         "context"
+        "encoding/json"
         "fmt"
         "sync"
         "sync/atomic"
@@ -16,10 +17,10 @@ import (
 type PoolWorkerStatus string
 
 const (
-        PoolWorkerStatusIdle    PoolWorkerStatus = "idle"
-        PoolWorkerStatusBusy    PoolWorkerStatus = "busy"
-        PoolWorkerStatusStopped PoolWorkerStatus = "stopped"
-        PoolWorkerStatusError   PoolWorkerStatus = "error"
+        PoolWorkerStatusIdle     PoolWorkerStatus = "idle"
+        PoolWorkerStatusBusy     PoolWorkerStatus = "busy"
+        PoolWorkerStatusStopped  PoolWorkerStatus = "stopped"
+        PoolWorkerStatusError    PoolWorkerStatus = "error"
 )
 
 // PoolWorker Worker 实例
@@ -42,13 +43,13 @@ type PoolWorker struct {
 
 // TaskExecutor 任务执行器接口
 type TaskExecutor interface {
-        Execute(task *schedulerModel.Task) (*PoolTaskResult, error)
+        Execute(task *schedulerModel.Task) (*TaskResult, error)
         Cancel(taskID uint) error
         IsRunning(taskID uint) bool
 }
 
-// PoolTaskResult 任务执行结果
-type PoolTaskResult struct {
+// TaskResult 任务执行结果
+type TaskResult struct {
         Success  bool   `json:"success"`
         Output   string `json:"output"`
         Error    string `json:"error"`
@@ -58,12 +59,12 @@ type PoolTaskResult struct {
 
 // WorkerPool Worker 池
 type WorkerPool struct {
-        queue    *queue.TaskQueue
-        workers  map[string]*PoolWorker
-        executor TaskExecutor
-        mu       sync.RWMutex
-        ctx      context.Context
-        cancel   context.CancelFunc
+        queue      *queue.TaskQueue
+        workers    map[string]*PoolWorker
+        executor   TaskExecutor
+        mu         sync.RWMutex
+        ctx        context.Context
+        cancel     context.CancelFunc
 
         // 统计
         totalTasksHandled int64
@@ -142,73 +143,73 @@ func (wp *WorkerPool) executeTask(worker *PoolWorker, task *schedulerModel.Task)
         // 更新任务状态
         now := time.Now()
         task.Status = schedulerModel.TaskStatusRunning
-        task.StartedAt = &now
+        task.ServerName = worker.ID // 使用 ServerName 字段存储 WorkerID
         global.DB.Save(task)
 
-        // 记录事件
-        event := &schedulerModel.TaskEvent{
-                TaskID:  task.ID,
-                Type:    "started",
-                Source:  worker.ID,
-                Message: "任务开始执行",
-                Data:    fmt.Sprintf(`{"worker_id": "%s"}`, worker.ID),
+        // 创建执行记录
+        execution := &TaskExecution{
+                TaskID:   task.ID,
+                Attempt:  task.RetryCount + 1,
+                Status:   schedulerModel.TaskStatusRunning,
+                WorkerID: worker.ID,
+                StartAt:  &now,
         }
-        global.DB.Create(event)
+        global.DB.Create(execution)
+
+        // 记录事件
+        recordTaskEvent(task.ID, "started", map[string]interface{}{
+                "worker_id": worker.ID,
+                "attempt":   execution.Attempt,
+        }, worker.ID, "任务开始执行")
 
         // 设置超时
-        timeout := task.Timeout
-        if timeout <= 0 {
-                timeout = 300 // 默认5分钟
-        }
-        ctx, cancel := context.WithTimeout(worker.ctx, time.Duration(timeout)*time.Second)
+        ctx, cancel := context.WithTimeout(worker.ctx, time.Duration(task.Timeout)*time.Second)
         defer cancel()
 
         // 执行任务
-        var result *PoolTaskResult
+        var result *TaskResult
         var execErr error
 
-        if wp.executor != nil {
-                done := make(chan struct{})
-                go func() {
-                        result, execErr = wp.executor.Execute(task)
-                        close(done)
-                }()
+        done := make(chan struct{})
+        go func() {
+                result, execErr = wp.executor.Execute(task)
+                close(done)
+        }()
 
-                select {
-                case <-done:
-                        // 执行完成
-                case <-ctx.Done():
-                        // 超时
-                        execErr = fmt.Errorf("task timeout after %d seconds", timeout)
-                        result = &PoolTaskResult{
-                                Success: false,
-                                Error:   execErr.Error(),
-                        }
-                }
-        } else {
-                // 没有执行器，模拟执行
-                result = &PoolTaskResult{
-                        Success: true,
-                        Output:  "Task executed (no executor)",
+        select {
+        case <-done:
+                // 执行完成
+        case <-ctx.Done():
+                // 超时
+                execErr = fmt.Errorf("task timeout after %d seconds", task.Timeout)
+                result = &TaskResult{
+                        Success: false,
+                        Error:   execErr.Error(),
                 }
         }
 
-        // 更新任务结果
+        // 更新执行记录
         endNow := time.Now()
+        execution.EndAt = &endNow
+        execution.Duration = endNow.Sub(*execution.StartAt).Milliseconds()
+
         if execErr != nil || !result.Success {
-                task.Status = schedulerModel.TaskStatusFailed
-                task.Error = result.Error
-                atomic.AddInt64(&wp.totalErrors, 1)
-                worker.LastError = result.Error
+                execution.Status = schedulerModel.TaskStatusFailed
+                execution.Error = result.Error
+                execution.Stderr = result.Error
+
+                // 处理失败
+                wp.handleTaskFailure(worker, task, result, execErr)
         } else {
-                task.Status = schedulerModel.TaskStatusSuccess
-                task.Output = result.Output
+                execution.Status = schedulerModel.TaskStatusSuccess
+                execution.Stdout = result.Output
+                execution.ExitCode = result.ExitCode
+
+                // 更新任务成功
+                wp.handleTaskSuccess(worker, task, result)
         }
-        task.CompletedAt = &endNow
-        if task.StartedAt != nil {
-                task.Duration = endNow.Sub(*task.StartedAt).Milliseconds()
-        }
-        global.DB.Save(task)
+
+        global.DB.Save(execution)
 
         // 更新 Worker 状态
         worker.Status = PoolWorkerStatusIdle
@@ -216,6 +217,52 @@ func (wp *WorkerPool) executeTask(worker *PoolWorker, task *schedulerModel.Task)
         worker.TasksHandled++
         worker.LastActiveAt = time.Now()
         atomic.AddInt64(&wp.totalTasksHandled, 1)
+}
+
+// handleTaskSuccess 处理任务成功
+func (wp *WorkerPool) handleTaskSuccess(worker *PoolWorker, task *schedulerModel.Task, result *TaskResult) {
+        now := time.Now()
+        task.Status = schedulerModel.TaskStatusSuccess
+        task.CompletedAt = &now
+        task.Duration = now.Sub(*task.StartedAt).Milliseconds()
+        task.Output = result.Output
+        global.DB.Save(task)
+
+        // 确认任务
+        wp.queue.AckTask(task.ID)
+
+        // 记录事件
+        recordTaskEvent(task.ID, "completed", map[string]interface{}{
+                "duration":  task.Duration,
+                "exit_code": result.ExitCode,
+        }, worker.ID, "任务执行成功")
+}
+
+// handleTaskFailure 处理任务失败
+func (wp *WorkerPool) handleTaskFailure(worker *PoolWorker, task *schedulerModel.Task, result *TaskResult, execErr error) {
+        errMsg := result.Error
+        if execErr != nil {
+                errMsg = execErr.Error()
+        }
+
+        // 记录错误
+        atomic.AddInt64(&wp.totalErrors, 1)
+        worker.LastError = errMsg
+
+        // 更新任务状态
+        task.Status = schedulerModel.TaskStatusFailed
+        task.Error = errMsg
+        task.RetryCount++
+        global.DB.Save(task)
+
+        // 拒绝任务
+        wp.queue.NackTask(task.ID, errMsg)
+
+        // 记录事件
+        recordTaskEvent(task.ID, "failed", map[string]interface{}{
+                "error":   errMsg,
+                "attempt": task.RetryCount,
+        }, worker.ID, "任务执行失败")
 }
 
 // Stop 停止 Worker 池
@@ -381,4 +428,38 @@ func (wp *WorkerPool) ListWorkers(queueName string) []*PoolWorker {
 // GetTotalStats 获取总统计
 func (wp *WorkerPool) GetTotalStats() (int64, int64) {
         return atomic.LoadInt64(&wp.totalTasksHandled), atomic.LoadInt64(&wp.totalErrors)
+}
+
+// TaskExecution 任务执行记录
+type TaskExecution struct {
+        ID        uint                   `json:"id" gorm:"primarykey"`
+        CreatedAt time.Time              `json:"createdAt"`
+        TaskID    uint                   `json:"taskId" gorm:"index"`
+        Attempt   int                    `json:"attempt"`
+        Status    schedulerModel.TaskStatus `json:"status" gorm:"type:varchar(16)"`
+        WorkerID  string                 `json:"workerId" gorm:"type:varchar(32)"`
+        StartAt   *time.Time             `json:"startAt"`
+        EndAt     *time.Time             `json:"endAt"`
+        Duration  int64                  `json:"duration"`
+        Error     string                 `json:"error" gorm:"type:text"`
+        Stdout    string                 `json:"stdout" gorm:"type:text"`
+        Stderr    string                 `json:"stderr" gorm:"type:text"`
+        ExitCode  int                    `json:"exitCode"`
+}
+
+func (TaskExecution) TableName() string {
+        return "scheduler_task_executions"
+}
+
+// recordTaskEvent 记录任务事件
+func recordTaskEvent(taskID uint, eventType string, eventData interface{}, source, message string) {
+        dataJSON, _ := json.Marshal(eventData)
+        event := schedulerModel.TaskEvent{
+                TaskID:  taskID,
+                Type:    eventType,
+                Source:  source,
+                Message: message,
+                Data:    string(dataJSON),
+        }
+        global.DB.Create(&event)
 }

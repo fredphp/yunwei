@@ -69,7 +69,7 @@ func DeleteLB(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(gin.H{}, c)
 }
 
 // GetBackends 获取后端服务器
@@ -123,7 +123,7 @@ func DeleteBackend(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(gin.H{}, c)
 }
 
 // OptimizeLB 优化负载均衡器
@@ -152,7 +152,7 @@ func AutoBalance(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(gin.H{}, c)
 }
 
 // HealthCheck 健康检查
@@ -163,7 +163,7 @@ func HealthCheck(c *gin.Context) {
                 response.FailWithMessage(err.Error(), c)
                 return
         }
-        response.Ok(nil, c)
+        response.Ok(gin.H{}, c)
 }
 
 // GetOptimizationHistory 获取优化历史

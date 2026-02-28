@@ -172,7 +172,7 @@ const scaleForm = ref({
 const fetchClusters = async () => {
   loading.value = true
   try {
-    const res = await request.get('/api/v1/kubernetes/clusters')
+    const res = await request.get('/kubernetes/clusters')
     clusters.value = res.data || []
   } catch (error) {
     ElMessage.error('获取集群列表失败')
@@ -184,7 +184,7 @@ const fetchClusters = async () => {
 const fetchScaleHistory = async () => {
   historyLoading.value = true
   try {
-    const res = await request.get('/api/v1/kubernetes/scale/history')
+    const res = await request.get('/kubernetes/scale/history')
     scaleHistory.value = res.data || []
   } catch (error) {
     console.error('获取扩容历史失败', error)
@@ -195,7 +195,7 @@ const fetchScaleHistory = async () => {
 
 const addCluster = async () => {
   try {
-    await request.post('/api/v1/kubernetes/clusters', clusterForm.value)
+    await request.post('/kubernetes/clusters', clusterForm.value)
     ElMessage.success('添加成功')
     showAddDialog.value = false
     fetchClusters()
@@ -206,7 +206,7 @@ const addCluster = async () => {
 
 const updateCluster = async (cluster: any) => {
   try {
-    await request.put(`/api/v1/kubernetes/clusters/${cluster.id}`, cluster)
+    await request.put(`/kubernetes/clusters/${cluster.id}`, cluster)
     ElMessage.success('更新成功')
   } catch (error) {
     ElMessage.error('更新失败')
@@ -215,7 +215,7 @@ const updateCluster = async (cluster: any) => {
 
 const analyzeCluster = async (cluster: any) => {
   try {
-    const res = await request.post(`/api/v1/kubernetes/clusters/${cluster.id}/analyze`, {
+    const res = await request.post(`/kubernetes/clusters/${cluster.id}/analyze`, {
       namespace: 'default',
       deployment: ''
     })
@@ -228,7 +228,7 @@ const analyzeCluster = async (cluster: any) => {
 
 const executeScale = async () => {
   try {
-    await request.post('/api/v1/kubernetes/scale/manual', scaleForm.value)
+    await request.post('/kubernetes/scale/manual', scaleForm.value)
     ElMessage.success('扩容请求已提交')
     showScaleDialog.value = false
     fetchScaleHistory()

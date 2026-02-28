@@ -163,24 +163,8 @@ func (s *SchedulerService) executeBackup(policy *backup.BackupPolicy) {
                 }
         } else {
                 if policy.NotifyOnSuccess {
-                        // 类型断言处理不同类型的备份结果
-                        switch v := result.(type) {
-                        case *FileBackupResult:
-                                backupResult := &BackupResult{
-                                        Success:    v.Success,
-                                        FilePath:   v.FilePath,
-                                        FileName:   v.FileName,
-                                        FileSize:   v.FileSize,
-                                        Checksum:   v.Checksum,
-                                        Duration:   v.Duration,
-                                        Error:      v.Error,
-                                }
+                        if backupResult, ok := result.(*BackupResult); ok {
                                 s.notifySvc.NotifyBackupSuccess(policy, backupResult)
-                        case *BackupResult:
-                                s.notifySvc.NotifyBackupSuccess(policy, v)
-                        default:
-                                // 未知类型，使用通用结果
-                                s.notifySvc.NotifyBackupSuccess(policy, &BackupResult{Success: true})
                         }
                 }
         }

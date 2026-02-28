@@ -9,7 +9,7 @@ import (
 
 	"yunwei/global"
 	"yunwei/service/ai/llm"
-	"yunwei/model/notify"
+	"yunwei/service/notify"
 )
 
 // CDNProvider CDN 提供商

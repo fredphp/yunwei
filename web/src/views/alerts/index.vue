@@ -292,7 +292,7 @@ const filteredAlerts = computed(() => {
 const fetchAlerts = async () => {
   loading.value = true
   try {
-    const res = await request.get('/api/v1/alerts')
+    const res = await request.get('/alerts')
     alerts.value = res.data || []
     
     stats.value.total = alerts.value.length
@@ -308,7 +308,7 @@ const fetchAlerts = async () => {
 
 const fetchRules = async () => {
   try {
-    const res = await request.get('/api/v1/rules')
+    const res = await request.get('/rules')
     rules.value = res.data || []
   } catch (error) {
     console.error('获取规则失败', error)
@@ -317,7 +317,7 @@ const fetchRules = async () => {
 
 const fetchDecisions = async () => {
   try {
-    const res = await request.get('/api/v1/decisions')
+    const res = await request.get('/decisions')
     decisions.value = res.data || []
   } catch (error) {
     console.error('获取决策失败', error)
@@ -326,7 +326,7 @@ const fetchDecisions = async () => {
 
 const fetchActions = async () => {
   try {
-    const res = await request.get('/api/v1/actions')
+    const res = await request.get('/actions')
     actions.value = res.data || []
   } catch (error) {
     console.error('获取自动操作失败', error)
@@ -340,7 +340,7 @@ const viewAlertDetail = (alert: any) => {
 
 const acknowledgeAlert = async (alert: any) => {
   try {
-    await request.post(`/api/v1/alerts/${alert.id}/acknowledge`)
+    await request.post(`/alerts/${alert.id}/acknowledge`)
     ElMessage.success('告警已确认')
     fetchAlerts()
   } catch (error) {
@@ -350,7 +350,7 @@ const acknowledgeAlert = async (alert: any) => {
 
 const resolveAlert = async () => {
   try {
-    await request.post(`/api/v1/alerts/${currentAlert.value.id}/acknowledge`, { note: ackNote.value })
+    await request.post(`/alerts/${currentAlert.value.id}/acknowledge`, { note: ackNote.value })
     ElMessage.success('已标记为已解决')
     showDetailDialog.value = false
     fetchAlerts()
@@ -361,7 +361,7 @@ const resolveAlert = async () => {
 
 const updateRule = async (rule: any) => {
   try {
-    await request.put(`/api/v1/rules/${rule.id}`, rule)
+    await request.put(`/rules/${rule.id}`, rule)
     ElMessage.success('规则已更新')
   } catch (error) {
     ElMessage.error('更新失败')
@@ -370,7 +370,7 @@ const updateRule = async (rule: any) => {
 
 const saveRule = async () => {
   try {
-    await request.post('/api/v1/rules', ruleForm.value)
+    await request.post('/rules', ruleForm.value)
     ElMessage.success('规则已添加')
     showRuleDialog.value = false
     fetchRules()
@@ -381,7 +381,7 @@ const saveRule = async () => {
 
 const approveDecision = async (decision: any) => {
   try {
-    await request.post(`/api/v1/decisions/${decision.id}/approve`)
+    await request.post(`/decisions/${decision.id}/approve`)
     ElMessage.success('决策已采纳')
     fetchDecisions()
   } catch (error) {
@@ -391,7 +391,7 @@ const approveDecision = async (decision: any) => {
 
 const rejectDecision = async (decision: any) => {
   try {
-    await request.post(`/api/v1/decisions/${decision.id}/reject`)
+    await request.post(`/decisions/${decision.id}/reject`)
     ElMessage.success('决策已忽略')
     fetchDecisions()
   } catch (error) {
@@ -401,7 +401,7 @@ const rejectDecision = async (decision: any) => {
 
 const executeAction = async (action: any) => {
   try {
-    await request.post(`/api/v1/actions/${action.id}/execute`)
+    await request.post(`/actions/${action.id}/execute`)
     ElMessage.success('操作已执行')
   } catch (error) {
     ElMessage.error('执行失败')

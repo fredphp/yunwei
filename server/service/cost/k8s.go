@@ -4,6 +4,8 @@ import (
         "context"
         "sync"
         "time"
+
+        "yunwei/model/cost"
 )
 
 // K8sCostService K8s成本分析服务
@@ -229,7 +231,7 @@ func (s *K8sCostService) GetNamespaceCostAnalysis(ctx context.Context, clusterID
                 ByWorkload:  make(map[string]float64),
                 ByLabel:     make(map[string]float64),
                 Workloads:   make([]WorkloadCost, 0),
-                Trend:       make([]CostTrendPoint, 0),
+                Trend:       make([]TrendPoint, 0),
         }
 
         analysis.ByWorkload = map[string]float64{
@@ -262,19 +264,7 @@ type NamespaceCostAnalysis struct {
         ByWorkload  map[string]float64  `json:"by_workload"`
         ByLabel     map[string]float64  `json:"by_label"`
         Workloads   []WorkloadCost      `json:"workloads"`
-        Trend       []CostTrendPoint    `json:"trend"`
-}
-
-// K8sCostAnalysis K8s成本分析模型
-type K8sCostAnalysis struct {
-        ID           uint      `json:"id" gorm:"primarykey"`
-        CreatedAt    time.Time `json:"created_at"`
-        ClusterID    string    `json:"cluster_id" gorm:"size:100;not null;index"`
-        Namespace    string    `json:"namespace" gorm:"size:100;not null;index"`
-        WorkloadName string    `json:"workload_name" gorm:"size:200;not null;index"`
-        CPUCost      float64   `json:"cpu_cost"`
-        MemoryCost   float64   `json:"memory_cost"`
-        TotalCost    float64   `json:"total_cost"`
+        Trend       []TrendPoint        `json:"trend"`
 }
 
 // GetPodCostAnalysis 获取Pod成本分析
@@ -402,11 +392,11 @@ type PVCCost struct {
 }
 
 // CalculateResourceEfficiency 计算资源效率
-func (s *K8sCostService) CalculateResourceEfficiency(ctx context.Context, clusterID string) (*K8sResourceEfficiency, error) {
+func (s *K8sCostService) CalculateResourceEfficiency(ctx context.Context, clusterID string) (*ResourceEfficiency, error) {
         s.mu.RLock()
         defer s.mu.RUnlock()
 
-        efficiency := &K8sResourceEfficiency{
+        efficiency := &ResourceEfficiency{
                 ClusterID: clusterID,
         }
 
@@ -433,8 +423,8 @@ func (s *K8sCostService) CalculateResourceEfficiency(ctx context.Context, cluste
         return efficiency, nil
 }
 
-// K8sResourceEfficiency K8s资源效率
-type K8sResourceEfficiency struct {
+// ResourceEfficiency 资源效率
+type ResourceEfficiency struct {
         ClusterID          string  `json:"cluster_id"`
         CPURequested       float64 `json:"cpu_requested"`       // 核
         CPUUsed            float64 `json:"cpu_used"`            // 核
@@ -459,8 +449,8 @@ func (s *K8sCostService) RightSizeWorkload(ctx context.Context, clusterID, names
                 ClusterID:  clusterID,
                 Namespace:  namespace,
                 Workload:   workloadName,
-                Current:    ResourceSpec{CPU: 4.0, Memory: 8 * 1024 * 1024 * 1024},
-                Recommended: ResourceSpec{CPU: 2.5, Memory: 5 * 1024 * 1024 * 1024},
+                Current:    ResourceSpec{CPU: 4.0, Memory: int64(8 * 1024 * 1024 * 1024)},
+                Recommended: ResourceSpec{CPU: 2.5, Memory: int64(5 * 1024 * 1024 * 1024)},
                 MonthlySavings: 800,
                 Reason:     "基于过去30天的使用数据，当前资源配置过高",
                 Confidence: 0.85,
@@ -469,8 +459,8 @@ func (s *K8sCostService) RightSizeWorkload(ctx context.Context, clusterID, names
         // 历史数据
         recommendation.UsageHistory = []UsageData{
                 {Date: "2024-01-01", CPU: 2.1, Memory: int64(4.5 * 1024 * 1024 * 1024)},
-                {Date: "2024-01-02", CPU: 2.3, Memory: int64(4.8 * 1024 * 1024 * 1024)},
-                {Date: "2024-01-03", CPU: 2.0, Memory: int64(4.2 * 1024 * 1024 * 1024)},
+                {Date: "2024-01-02", CPU: 2.3, Memory: int64(5 * 1024 * 1024 * 1024)},
+                {Date: "2024-01-03", CPU: 2.0, Memory: int64(4 * 1024 * 1024 * 1024)},
         }
 
         return recommendation, nil
@@ -540,7 +530,7 @@ type NamespaceBudget struct {
 }
 
 // CreateK8sCostRecord 创建K8s成本记录
-func (s *K8sCostService) CreateK8sCostRecord(ctx context.Context, record *K8sCostAnalysis) error {
+func (s *K8sCostService) CreateK8sCostRecord(ctx context.Context, record *cost.K8sCostRecord) error {
         return nil
 }
 

@@ -13,7 +13,7 @@ import (
 
         "yunwei/global"
         "yunwei/service/ai/llm"
-        "yunwei/model/notify"
+        "yunwei/service/notify"
 )
 
 // CertStatus 证书状态

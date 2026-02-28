@@ -389,7 +389,7 @@ const restoreForm = ref({
 const fetchPolicies = async () => {
   loading.value = true
   try {
-    const res = await request.get('/api/v1/backup/policies')
+    const res = await request.get('/backup/policies')
     // policies.value = res.data || []
   } catch (error) {
     console.error('获取策略失败', error)
@@ -404,7 +404,7 @@ const togglePolicy = async (policy: any) => {
 
 const triggerBackup = async (policy: any) => {
   try {
-    await request.post(`/api/v1/backup/policies/${policy.id}/trigger`)
+    await request.post(`/backup/policies/${policy.id}/trigger`)
     ElMessage.success('备份任务已触发')
   } catch (error) {
     ElMessage.error('触发失败')
@@ -435,7 +435,7 @@ const executeQuickBackup = async () => {
 
 const executeDrill = async (drill: any) => {
   try {
-    await request.post(`/api/v1/backup/drills/${drill.id}/execute`)
+    await request.post(`/backup/drills/${drill.id}/execute`)
     ElMessage.success('演练已开始')
   } catch (error) {
     ElMessage.error('启动失败')
@@ -464,7 +464,7 @@ const restoreBackup = (record: any) => {
 const confirmRestore = async () => {
   try {
     await ElMessageBox.confirm('确定执行恢复操作？', '警告', { type: 'warning' })
-    await request.post('/api/v1/backup/restores', {
+    await request.post('/backup/restores', {
       recordId: currentRecord.value.id,
       ...restoreForm.value
     })

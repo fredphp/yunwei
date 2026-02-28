@@ -382,7 +382,7 @@ func (s *VerifyService) verifyRestoreTest(ctx context.Context, filePath string, 
                 return check
         }
 
-        if restoreResult != nil && restoreResult.RestoredFiles > 0 {
+        if restoreResult.RestoredFiles > 0 {
                 check.Status = "passed"
                 check.Message = fmt.Sprintf("恢复测试成功，恢复 %d 个文件", restoreResult.RestoredFiles)
         } else {
