@@ -18,30 +18,32 @@ INSERT IGNORE INTO `sys_roles` (`id`, `name`, `keyword`, `description`, `status`
 (3, '只读用户', 'viewer', '只能查看数据', 1);
 
 -- 系统菜单数据（完整的菜单树，无重复）
+-- 注意：此菜单结构已与 init.sql 保持一致
 INSERT IGNORE INTO `sys_menus` (`id`, `parent_id`, `title`, `name`, `path`, `component`, `icon`, `sort`, `status`, `hidden`) VALUES
 -- 一级菜单
-(1, 0, '仪表盘', 'Dashboard', '/dashboard', 'views/dashboard/index.vue', 'Odometer', 1, 1, 0),
-(2, 0, '服务器管理', 'Servers', '/servers', 'views/servers/index.vue', 'Monitor', 2, 1, 0),
-(3, 0, 'Kubernetes', 'Kubernetes', '/kubernetes', 'views/kubernetes/index.vue', 'Grid', 3, 1, 0),
-(4, 0, '告警中心', 'Alerts', '/alerts', 'views/alerts/index.vue', 'Bell', 4, 1, 0),
-(5, 0, '成本分析', 'Cost', '/cost', 'views/cost/index.vue', 'Money', 5, 1, 0),
-(6, 0, '定时任务', 'Scheduler', '/scheduler', 'views/scheduler/index.vue', 'Timer', 6, 1, 0),
-(7, 0, 'Agent管理', 'Agents', '/agents', 'views/agents/index.vue', 'Cpu', 7, 1, 0),
-(8, 0, '租户管理', 'Tenant', '/tenant', 'views/tenant/index.vue', 'OfficeBuilding', 8, 1, 0),
-(9, 0, '高可用', 'HA', '/ha', 'views/ha/index.vue', 'Connection', 9, 1, 0),
-(10, 0, '系统设置', 'System', '/system', '', 'Setting', 99, 1, 0),
--- 二级菜单 - 系统设置
-(11, 10, '用户管理', 'UserManage', '/system/users', 'views/system/users/index.vue', 'User', 1, 1, 0),
-(12, 10, '角色管理', 'RoleManage', '/system/roles', 'views/system/roles/index.vue', 'UserFilled', 2, 1, 0),
-(13, 10, '菜单管理', 'MenuManage', '/system/menus', 'views/system/menus/index.vue', 'Menu', 3, 1, 0),
-(14, 10, 'API管理', 'ApiManage', '/system/apis', 'views/system/apis/index.vue', 'Connection', 4, 1, 0),
+(1, 0, '仪表盘', 'Dashboard', '/dashboard', 'views/dashboard/index', 'Odometer', 1, 1, 0),
+(2, 0, '服务器管理', 'Servers', '/servers', 'Layout', 'Monitor', 2, 1, 0),
+(3, 0, '告警中心', 'Alerts', '/alerts', 'views/alerts/index', 'Bell', 3, 1, 0),
+(4, 0, 'Kubernetes', 'Kubernetes', '/kubernetes', 'Layout', 'Grid', 4, 1, 0),
+(5, 0, '灰度发布', 'Canary', '/canary', 'Layout', 'Promotion', 5, 1, 0),
+(6, 0, '负载均衡', 'LoadBalancer', '/loadbalancer', 'Layout', 'Connection', 6, 1, 0),
+(7, 0, '证书管理', 'Certificate', '/certificate', 'Layout', 'DocumentChecked', 7, 1, 0),
+(8, 0, 'CDN管理', 'CDN', '/cdn', 'Layout', 'Position', 8, 1, 0),
+(9, 0, '智能部署', 'Deploy', '/deploy', 'Layout', 'Upload', 9, 1, 0),
+(10, 0, '任务调度', 'Scheduler', '/scheduler', 'Layout', 'Timer', 10, 1, 0),
+(11, 0, 'Agent管理', 'Agents', '/agents', 'Layout', 'Cpu', 11, 1, 0),
+(12, 0, '高可用', 'HA', '/ha', 'Layout', 'CircleCheck', 12, 1, 0),
+(13, 0, '灾备备份', 'Backup', '/backup', 'Layout', 'Files', 13, 1, 0),
+(14, 0, '成本控制', 'Cost', '/cost', 'Layout', 'Coin', 14, 1, 0),
+(15, 0, '系统管理', 'System', '/system', 'Layout', 'Setting', 15, 1, 0),
 -- 二级菜单 - 服务器管理
-(15, 2, '服务器列表', 'ServerList', '/servers/list', 'views/servers/list.vue', 'List', 1, 1, 0),
-(16, 2, '服务器监控', 'ServerMonitor', '/servers/monitor', 'views/servers/monitor.vue', 'DataBoard', 2, 1, 0),
+(101, 2, '服务器列表', 'ServerList', '/servers/list', 'views/servers/index', 'List', 1, 1, 0),
 -- 二级菜单 - Kubernetes
-(17, 3, '集群管理', 'ClusterManage', '/kubernetes/clusters', 'views/kubernetes/clusters.vue', 'Cluster', 1, 1, 0),
-(18, 3, '工作负载', 'Workloads', '/kubernetes/workloads', 'views/kubernetes/workloads.vue', 'Box', 2, 1, 0),
-(19, 3, '自动扩缩', 'AutoScale', '/kubernetes/autoscale', 'views/kubernetes/autoscale.vue', 'ZoomIn', 3, 1, 0);
+(102, 4, '集群管理', 'Clusters', '/kubernetes/clusters', 'views/kubernetes/index', 'Cluster', 1, 1, 0),
+-- 二级菜单 - 系统管理
+(103, 15, '用户管理', 'UserManage', '/system/user', 'views/system/user/index', 'User', 1, 1, 0),
+(104, 15, '角色管理', 'RoleManage', '/system/role', 'views/system/role/index', 'UserFilled', 2, 1, 0),
+(105, 15, '菜单管理', 'MenuManage', '/system/menu', 'views/system/menu/index', 'Menu', 3, 1, 0);
 
 -- 系统 API 数据
 INSERT IGNORE INTO `sys_apis` (`id`, `path`, `method`, `group`, `description`) VALUES
@@ -58,13 +60,18 @@ INSERT IGNORE INTO `sys_role_apis` (`role_id`, `api_id`) VALUES
 (2, 1), (2, 3), (2, 5), (2, 6),
 (3, 1), (3, 5), (3, 6);
 
--- 角色-菜单 关联
+-- 角色-菜单 关联（菜单ID已更新，与init.sql结构一致）
 INSERT IGNORE INTO `sys_role_menus` (`role_id`, `menu_id`) VALUES
+-- 超级管理员：拥有所有菜单权限
 (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10),
-(1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (1, 16), (1, 17), (1, 18), (1, 19),
-(2, 1), (2, 2), (2, 3), (2, 4), (2, 6), (2, 7), (2, 9),
-(2, 15), (2, 16), (2, 17), (2, 18), (2, 19),
-(3, 1), (3, 2), (3, 3), (3, 4), (3, 15), (3, 17);
+(1, 11), (1, 12), (1, 13), (1, 14), (1, 15),
+(1, 101), (1, 102), (1, 103), (1, 104), (1, 105),
+-- 运维工程师：拥有核心功能权限
+(2, 1), (2, 2), (2, 3), (2, 4), (2, 6), (2, 7), (2, 9), (2, 11), (2, 12),
+(2, 101), (2, 102),
+-- 只读用户：只有查看权限
+(3, 1), (3, 2), (3, 3), (3, 4),
+(3, 101), (3, 102);
 
 -- ==================== Agent管理 ====================
 
