@@ -251,19 +251,24 @@ func createTestTenant(name, slug, plan, email, ownerName, domain string) {
         // 生成 ID
         tenantID := generateUUID()
 
+        // 如果 domain 为空，使用 slug 生成唯一 domain
+        if domain == "" {
+                domain = slug + ".example.com"
+        }
+
         // 创建租户
         t := tenant.Tenant{
-                ID:          tenantID,
-                Name:        name,
-                Slug:        slug,
-                Status:      "active",
-                Plan:        plan,
-                Domain:      domain,
+                ID:           tenantID,
+                Name:         name,
+                Slug:         slug,
+                Status:       "active",
+                Plan:         plan,
+                Domain:       domain,
                 ContactEmail: email,
-                ContactName: ownerName,
+                ContactName:  ownerName,
                 BillingCycle: "monthly",
-                Settings:    tenant.JSON{},
-                Features:    tenant.JSON{},
+                Settings:     tenant.JSON{},
+                Features:     tenant.JSON{},
         }
 
         if err := DB.Create(&t).Error; err != nil {

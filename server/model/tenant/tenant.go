@@ -14,7 +14,7 @@ type Tenant struct {
         ID          string         `gorm:"type:varchar(36);primaryKey" json:"id"`
         Name        string         `gorm:"type:varchar(100);uniqueIndex;not null" json:"name"`
         Slug        string         `gorm:"type:varchar(50);uniqueIndex;not null" json:"slug"` // URL友好标识
-        Domain      string         `gorm:"type:varchar(255);uniqueIndex" json:"domain"`       // 自定义域名
+        Domain      string         `gorm:"type:varchar(255);index" json:"domain"`             // 自定义域名（非唯一，空值允许重复）
         Logo        string         `gorm:"type:varchar(500)" json:"logo"`
         Description string         `gorm:"type:text" json:"description"`
 
