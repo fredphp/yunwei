@@ -453,11 +453,25 @@ func GetDashboard(c *gin.Context) {
         global.DB.Model(&scheduler.Task{}).Where("status = ? AND DATE(created_at) = ?", scheduler.TaskStatusSuccess, today).Count(&todaySuccess)
         global.DB.Model(&scheduler.Task{}).Where("status = ? AND DATE(created_at) = ?", scheduler.TaskStatusFailed, today).Count(&todayFailed)
         
-        // 队列统计
-        queueStats, _ := jobCenter.GetAllQueueStats()
+        // 队列统计 - 添加 nil 检查
+        var queueStats map[string]interface{}
+        if jobCenter != nil {
+                stats, _ := jobCenter.GetAllQueueStats()
+                queueStats = make(map[string]interface{})
+                for k, v := range stats {
+                        queueStats[k] = v
+                }
+        }
         
-        // Worker 统计
-        workerStats := jobCenter.GetAllWorkerStats()
+        // Worker 统计 - 添加 nil 检查
+        var workerStats map[string]interface{}
+        if jobCenter != nil {
+                stats := jobCenter.GetAllWorkerStats()
+                workerStats = make(map[string]interface{})
+                for k, v := range stats {
+                        workerStats[k] = v
+                }
+        }
         
         response.OkWithData(gin.H{
                 "taskStats": gin.H{
