@@ -160,7 +160,12 @@ func UpdateRole(c *gin.Context) {
                 return
         }
 
-        if role.IsSystem {
+        // 检查是否是超级管理员（RoleID == 1）
+        isAdmin, _ := c.Get("isAdmin")
+        isSuperAdmin := isAdmin == true
+
+        // 只有超级管理员可以修改系统角色
+        if role.IsSystem && !isSuperAdmin {
                 response.FailWithMessage("系统角色不可修改", c)
                 return
         }
@@ -203,8 +208,35 @@ func DeleteRole(c *gin.Context) {
                 return
         }
 
-        rbac := security.NewRBACManager(global.DB)
-        if err := rbac.DeleteRole(uint(id)); err != nil {
+        // 检查是否是超级管理员
+        isAdmin, _ := c.Get("isAdmin")
+        isSuperAdmin := isAdmin == true
+
+        var role security.Role
+        if err := global.DB.First(&role, id).Error; err != nil {
+                response.FailWithMessage("角色不存在", c)
+                return
+        }
+
+        // 只有超级管理员可以删除系统角色
+        if role.IsSystem && !isSuperAdmin {
+                response.FailWithMessage("系统角色不可删除", c)
+                return
+        }
+
+        // 检查是否有用户使用此角色
+        var userCount int64
+        global.DB.Table("user_roles").Where("role_id = ?", id).Count(&userCount)
+        if userCount > 0 {
+                response.FailWithMessage("该角色下存在用户，无法删除", c)
+                return
+        }
+
+        // 删除角色关联的权限
+        global.DB.Exec("DELETE FROM role_permissions WHERE role_id = ?", id)
+        
+        // 删除角色
+        if err := global.DB.Delete(&role).Error; err != nil {
                 response.FailWithMessage("删除失败: "+err.Error(), c)
                 return
         }
