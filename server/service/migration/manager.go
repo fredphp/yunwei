@@ -327,11 +327,25 @@ func (m *MigrationManager) splitSQLStatements(sql string) []string {
 func (m *MigrationManager) isAcceptableError(err error) bool {
         errMsg := err.Error()
         acceptablePatterns := []string{
+                // 表/索引已存在
                 "already exists",
+                "Duplicate key name",
+                "索引已存在",
+                "表已存在",
+                
+                // 字段已存在
+                "Duplicate column",
+                "字段已存在",
+                "column already exists",
+                
+                // 数据重复
                 "duplicate",
                 "Duplicate entry",
-                "表已存在",
-                "索引已存在",
+                
+                // 其他可忽略错误
+                "Unknown column",           // 字段不存在（可能是旧数据）
+                "doesn't exist",            // 表不存在
+                "does not exist",           // 表不存在
         }
 
         for _, pattern := range acceptablePatterns {

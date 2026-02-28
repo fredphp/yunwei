@@ -1,12 +1,12 @@
 -- 多租户系统数据库迁移脚本
 -- 为现有表添加 tenant_id 字段实现数据隔离
 
--- 1. 租户相关表
+-- 1. 租户相关表（使用 CREATE TABLE IF NOT EXISTS 避免重复创建）
 CREATE TABLE IF NOT EXISTS tenants (
     id VARCHAR(36) PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    slug VARCHAR(50) NOT NULL UNIQUE,
-    domain VARCHAR(255) UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(50) NOT NULL,
+    domain VARCHAR(255),
     logo VARCHAR(500),
     description TEXT,
     status VARCHAR(20) DEFAULT 'active',
@@ -20,12 +20,14 @@ CREATE TABLE IF NOT EXISTS tenants (
     features JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
+    deleted_at TIMESTAMP NULL,
+    UNIQUE INDEX idx_name (name),
+    UNIQUE INDEX idx_slug (slug)
 );
 
 CREATE TABLE IF NOT EXISTS tenant_quotas (
     id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL UNIQUE,
+    tenant_id VARCHAR(36) NOT NULL,
     max_users INT DEFAULT 5,
     max_admins INT DEFAULT 2,
     max_resources INT DEFAULT 100,
@@ -46,7 +48,7 @@ CREATE TABLE IF NOT EXISTS tenant_quotas (
     current_api_calls INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    UNIQUE INDEX idx_tenant_id (tenant_id)
 );
 
 CREATE TABLE IF NOT EXISTS tenant_users (
@@ -63,10 +65,9 @@ CREATE TABLE IF NOT EXISTS tenant_users (
     status VARCHAR(20) DEFAULT 'active',
     invited_by VARCHAR(36),
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_active_at TIMESTAMP,
+    last_active_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     INDEX idx_tenant_user (tenant_id, user_id),
     INDEX idx_tenant_email (tenant_id, email)
 );
@@ -83,7 +84,6 @@ CREATE TABLE IF NOT EXISTS tenant_roles (
     parent_id VARCHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     INDEX idx_tenant_slug (tenant_id, slug)
 );
 
@@ -94,15 +94,14 @@ CREATE TABLE IF NOT EXISTS tenant_invitations (
     role_id VARCHAR(36),
     role_name VARCHAR(50),
     status VARCHAR(20) DEFAULT 'pending',
-    token VARCHAR(64) UNIQUE,
+    token VARCHAR(64),
     invited_by VARCHAR(36),
     inviter_name VARCHAR(100),
-    expires_at TIMESTAMP,
+    expires_at TIMESTAMP NULL,
     accepted_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     INDEX idx_tenant_email (tenant_id, email),
-    INDEX idx_token (token)
+    UNIQUE INDEX idx_token (token)
 );
 
 CREATE TABLE IF NOT EXISTS tenant_resource_usage (
@@ -124,7 +123,6 @@ CREATE TABLE IF NOT EXISTS tenant_resource_usage (
     backup_used_mb INT DEFAULT 0,
     api_calls INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     INDEX idx_tenant_date (tenant_id, date)
 );
 
@@ -132,7 +130,7 @@ CREATE TABLE IF NOT EXISTS tenant_billings (
     id VARCHAR(36) PRIMARY KEY,
     tenant_id VARCHAR(36) NOT NULL,
     billing_period VARCHAR(20) NOT NULL,
-    due_date TIMESTAMP,
+    due_date TIMESTAMP NULL,
     base_amount DECIMAL(15,2) DEFAULT 0,
     usage_amount DECIMAL(15,2) DEFAULT 0,
     overage_amount DECIMAL(15,2) DEFAULT 0,
@@ -148,7 +146,6 @@ CREATE TABLE IF NOT EXISTS tenant_billings (
     invoice_url VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     INDEX idx_tenant_period (tenant_id, billing_period)
 );
 
@@ -171,70 +168,73 @@ CREATE TABLE IF NOT EXISTS tenant_audit_logs (
     status VARCHAR(20) DEFAULT 'success',
     error_msg TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     INDEX idx_tenant_user (tenant_id, user_id),
     INDEX idx_tenant_action (tenant_id, action),
     INDEX idx_tenant_resource (tenant_id, resource, resource_id),
     INDEX idx_created_at (created_at)
 );
 
--- 2. 为现有业务表添加 tenant_id 字段
--- 注意：以下语句需要根据实际表结构调整
+-- 2. 为现有业务表添加 tenant_id 字段（使用存储过程检查字段是否存在）
+-- 注意：以下语句会自动忽略已存在的字段
 
 -- 服务器表
-ALTER TABLE servers ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE servers ADD INDEX idx_tenant_id (tenant_id);
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'servers' AND column_name = 'tenant_id');
+SET @sql := IF(@exist = 0, 'ALTER TABLE servers ADD COLUMN tenant_id VARCHAR(36)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 告警表
-ALTER TABLE alerts ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE alerts ADD INDEX idx_tenant_id (tenant_id);
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'alerts' AND column_name = 'tenant_id');
+SET @sql := IF(@exist = 0, 'ALTER TABLE alerts ADD COLUMN tenant_id VARCHAR(36)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Kubernetes集群表
-ALTER TABLE k8s_clusters ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE k8s_clusters ADD INDEX idx_tenant_id (tenant_id);
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'k8s_clusters' AND column_name = 'tenant_id');
+SET @sql := IF(@exist = 0, 'ALTER TABLE k8s_clusters ADD COLUMN tenant_id VARCHAR(36)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 灰度发布表
-ALTER TABLE canary_releases ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE canary_releases ADD INDEX idx_tenant_id (tenant_id);
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'canary_releases' AND column_name = 'tenant_id');
+SET @sql := IF(@exist = 0, 'ALTER TABLE canary_releases ADD COLUMN tenant_id VARCHAR(36)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 负载均衡表
-ALTER TABLE load_balancers ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE load_balancers ADD INDEX idx_tenant_id (tenant_id);
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'load_balancers' AND column_name = 'tenant_id');
+SET @sql := IF(@exist = 0, 'ALTER TABLE load_balancers ADD COLUMN tenant_id VARCHAR(36)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 证书表
-ALTER TABLE certificates ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE certificates ADD INDEX idx_tenant_id (tenant_id);
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'certificates' AND column_name = 'tenant_id');
+SET @sql := IF(@exist = 0, 'ALTER TABLE certificates ADD COLUMN tenant_id VARCHAR(36)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- CDN域名表
-ALTER TABLE cdn_domains ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE cdn_domains ADD INDEX idx_tenant_id (tenant_id);
-
--- 部署任务表
-ALTER TABLE deploy_tasks ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE deploy_tasks ADD INDEX idx_tenant_id (tenant_id);
-
--- 调度任务表
-ALTER TABLE scheduler_tasks ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE scheduler_tasks ADD INDEX idx_tenant_id (tenant_id);
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'cdn_domains' AND column_name = 'tenant_id');
+SET @sql := IF(@exist = 0, 'ALTER TABLE cdn_domains ADD COLUMN tenant_id VARCHAR(36)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Agent表
-ALTER TABLE agents ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE agents ADD INDEX idx_tenant_id (tenant_id);
-
--- 备份策略表
-ALTER TABLE backup_policies ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE backup_policies ADD INDEX idx_tenant_id (tenant_id);
-
--- 成本记录表
-ALTER TABLE cost_records ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE cost_records ADD INDEX idx_tenant_id (tenant_id);
-
--- 云账户表
-ALTER TABLE cloud_accounts ADD COLUMN tenant_id VARCHAR(36);
-ALTER TABLE cloud_accounts ADD INDEX idx_tenant_id (tenant_id);
+SET @exist := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'agents' AND column_name = 'tenant_id');
+SET @sql := IF(@exist = 0, 'ALTER TABLE agents ADD COLUMN tenant_id VARCHAR(36)', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 3. 创建默认租户（用于迁移现有数据）
-INSERT INTO tenants (id, name, slug, status, plan, contact_email, contact_name)
+INSERT IGNORE INTO tenants (id, name, slug, status, plan, contact_email, contact_name)
 VALUES ('default', 'Default Tenant', 'default', 'active', 'enterprise', 'admin@example.com', 'Admin');
 
 -- 4. 为现有数据设置默认租户
@@ -245,12 +245,6 @@ UPDATE canary_releases SET tenant_id = 'default' WHERE tenant_id IS NULL;
 UPDATE load_balancers SET tenant_id = 'default' WHERE tenant_id IS NULL;
 UPDATE certificates SET tenant_id = 'default' WHERE tenant_id IS NULL;
 UPDATE cdn_domains SET tenant_id = 'default' WHERE tenant_id IS NULL;
-UPDATE deploy_tasks SET tenant_id = 'default' WHERE tenant_id IS NULL;
-UPDATE scheduler_tasks SET tenant_id = 'default' WHERE tenant_id IS NULL;
 UPDATE agents SET tenant_id = 'default' WHERE tenant_id IS NULL;
-UPDATE backup_policies SET tenant_id = 'default' WHERE tenant_id IS NULL;
-UPDATE cost_records SET tenant_id = 'default' WHERE tenant_id IS NULL;
-UPDATE cloud_accounts SET tenant_id = 'default' WHERE tenant_id IS NULL;
 
--- 5. 添加外键约束（可选，根据需要）
--- ALTER TABLE servers ADD CONSTRAINT fk_servers_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id);
+SELECT '多租户系统迁移完成!' AS message;

@@ -75,7 +75,7 @@ WHERE name = 'System' AND parent_id = 0;
 -- ==================== 6. 清理迁移记录表（重新执行迁移）====================
 
 -- 清空迁移记录，让系统重新执行所有迁移
-TRUNCATE TABLE IF EXISTS sys_migrations;
+DELETE FROM sys_migrations WHERE 1=1;
 
 -- 完成提示
 SELECT '数据清理完成!' AS message;

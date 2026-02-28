@@ -81,10 +81,10 @@ INSERT IGNORE INTO `agent_versions` (`id`, `version`, `version_code`, `build_tim
 (2, '1.1.0', 110, NOW(), 'e5f6g7h8', 'main', 'https://downloads.yunwei.com/agent/v1.1.0/agent-linux-amd64', 'def456ghi789', 16777216, 'linux', 'amd64', '新增自动恢复功能', 'stable', 1, 1),
 (3, '1.1.0', 110, NOW(), 'e5f6g7h8', 'main', 'https://downloads.yunwei.com/agent/v1.1.0/agent-linux-arm64', 'ghi789jkl012', 15728640, 'linux', 'arm64', '新增自动恢复功能', 'stable', 1, 1);
 
--- Agent实例数据
-INSERT IGNORE INTO `agents` (`id`, `server_id`, `server_name`, `server_ip`, `agent_id`, `version`, `version_code`, `platform`, `arch`, `os`, `status`, `auto_upgrade`, `enabled`) VALUES
-(1, 1, '生产服务器-01', '192.168.1.100', 'agent-001-abc', '1.1.0', 110, 'linux', 'amd64', 'CentOS 7.9', 'online', 1, 1),
-(2, 2, '测试服务器-01', '192.168.1.101', 'agent-002-def', '1.0.0', 100, 'linux', 'amd64', 'Ubuntu 20.04', 'online', 1, 1);
+-- Agent实例数据（匹配 Agent 模型结构）
+INSERT IGNORE INTO `agents` (`id`, `server_id`, `server_name`, `server_ip`, `agent_id`, `version`, `version_code`, `platform`, `arch`, `os`, `status`, `auto_upgrade`) VALUES
+(1, 1, '生产服务器-01', '192.168.1.100', 'agent-001-abc', '1.1.0', 110, 'linux', 'amd64', 'CentOS 7.9', 'online', 1),
+(2, 2, '测试服务器-01', '192.168.1.101', 'agent-002-def', '1.0.0', 100, 'linux', 'amd64', 'Ubuntu 20.04', 'online', 1);
 
 -- Agent配置数据
 INSERT IGNORE INTO `agent_configs` (`id`, `name`, `description`, `config_json`, `scope`, `is_default`, `enabled`) VALUES
